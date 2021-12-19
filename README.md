@@ -1,7 +1,7 @@
 # Nextflow SSO authentication system
 
 ### About
-The Nextflow SSO authentication system allows you to log in to all Nextflow services with a single account.
+Built on MERN stack, the Nextflow SSO authentication system allows you to log in to all Nextflow services with a single account.
 * Flexible and versatile
 * Clean and fluid interface
 * Fast
