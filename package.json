@@ -1,32 +1,29 @@
 {
-  "name": "auth-react",
-  "version": "0.1.0",
-  "private": true,
-  "dependencies": {
-    "antd": "^4.17.3",
-    "react": "^17.0.2",
-    "react-animations": "^1.0.0",
-    "react-dom": "^17.0.2",
-    "react-router-dom": "^6.1.1",
-    "react-scripts": "^5.0.0",
-    "styled-components": "^5.3.3"
-  },
+  "name": "sso-system",
+  "version": "0.3.2254",
+  "description": "API backend server for the Nextflow secure single sign on service",
+  "main": "index.js",
   "scripts": {
-    "start": "PORT=3001 react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test --env=jsdom",
-    "eject": "react-scripts eject"
+    "start": "node index.js"
   },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+  "author": "Queryzi and ComputerGeek12",
+  "license": "GPLv3",
+  "dependencies": {
+    "bcrypt": "^5.0.1",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.1",
+    "express-fileupload": "^1.2.1",
+    "express-rate-limit": "^6.1.0",
+    "googleapis": "^92.0.0",
+    "jsonwebtoken": "^8.5.1",
+    "mongodb": "^4.3.0",
+    "node-2fa": "^2.0.3",
+    "node-fetch": "^2.6.7",
+    "nodemailer": "^6.7.2",
+    "qrcode": "^1.5.0",
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1"
   }
 }
