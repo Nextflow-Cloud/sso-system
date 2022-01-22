@@ -103,5 +103,9 @@ dist
 # TernJS port file
 .tern-port
 
+
 # Compiled React webpack files
 webpack/
+
+# Node package lock file
+package-lock.json
