@@ -1,13 +1,4 @@
 Add raw HTML elements to React project
 Complete APIv2
 Conform to REST by changing HTTP response codes
-
-// btw dude you said that we needed to update imports, vs code did that already
-
-// we will do that
-// expressratelimit is a bit weird but we will fix it
-
-// ok I just did replace all on notAuthThing
-// but this is so that the api meets the rest api standard
-
-// goodbye mongoose see you never
+Development and production branches and deployment system

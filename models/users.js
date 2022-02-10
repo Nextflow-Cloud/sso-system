@@ -1,6 +1,8 @@
 const { Schema } = require("../classes/ExpressDB");
 
 module.exports = new Schema('logins', {
+    idHash: String,
+    idEncrypted: String,
     usernameHash: String,
     usernameEncrypted: String,
     emailEncrypted: String,

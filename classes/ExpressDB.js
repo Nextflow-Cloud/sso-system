@@ -10,9 +10,10 @@ const { EventEmitter } = require('events');
 /**
  * Database - a database manager for the server. Includes secure handling of database policies, and loading models and schemas.
  */
+
 class Database extends EventEmitter {
     uri;
-    connected;
+    connected;// dude you said sql even though it had nothing to do with this
     models;
     database;
     client;
@@ -72,10 +73,14 @@ class Schema {
             throw e;
         });
     }
-    async findOne(query) { 
+    async findOne(query, callback) { 
         if (!this.client) this.client = Database.globalClient;
         if (!this.client) throw new Error('No database connection');
-        return await this.client.collection(this.collection).findOne(query); 
+        if (callback) {
+            callback(await this.client.collection(this.collection).findOne(query));
+        } else {
+            return await this.client.collection(this.collection).findOne(query);
+        }
     }
     async findOneAndUpdate(query, update) {
         if (!this.client) this.client = Database.globalClient;
@@ -119,7 +124,7 @@ class Schema {
     async deleteOne(query) {
         if (!this.client) this.client = Database.globalClient;
         if (!this.client) throw new Error('No database connection');
-        return await this.client.collection(this.collection).deleteOne(query);
+        return await this.client.collection(this.collection).deleteOne(query); // promis is right here
     }
     async deleteMany(query) {
         if (!this.client) this.client = Database.globalClient;

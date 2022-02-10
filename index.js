@@ -1,25 +1,18 @@
 const express = require('express');
 const app = express();
-const util = require('tweetnacl-util');
-const nacl = require('tweetnacl');
 const jwt = require('jsonwebtoken');
 const cors = require("cors");
 const dotenv = require('dotenv');
 dotenv.config();
-const KEY = util.decodeBase64(process.env.KEY);
-const SERVER_PRIVATE_KEY = process.env.PRIVATE;
-const SERVER_PUBLIC_KEY = process.env.PUBLIC;
-const IV = util.decodeBase64(process.env.IV);
 const Database = require("./classes/ExpressDB");
 const crypto = require('./classes/Crypto.js');
-const blacklist = require('./models/blacklist.js'); // see you never mongoose :D
-const upload = require("express-fileupload");
+const blacklist = require('./models/blacklist.js');
 const database = new Database(process.env.URI, process.env.DB);
 database.on("connected", () => console.log("connected to database"));
 database.connect();
 const forgotPasswords = require("./models/forgotPasswords");
 
-var whitelist = ['https://secure.nextflow.cloud', 'https://chat.nextflow.cloud', 'https://ss.nextflow.cloud', 'http://localhost:3001'];
+var whitelist = ['https://secure.nextflow.cloud', 'https://chat.nextflow.cloud', 'https://ss.nextflow.cloud', 'http://localhost:3001', 'https://test.nextflow.cloud'];
 var corsOptions = {
     origin: function (origin, callback) {
         if (whitelist.indexOf(origin) !== -1) {
@@ -37,6 +30,13 @@ const apiLimiter = rateLimit({
 	legacyHeaders: false, 
 });
 app.use('/api', apiLimiter);
+// app.use('/api', cors(corsOptions));
+// app.use('/api', verifyAuthToken);
+// app.use('/api', (req, res, next) => {
+//    res.status(451).send('<h1>451</h1><h2>Unavailable for legal reasons</h2><h2>由于法律原因不可用</h2><div><p><b>What does this mean?</b></p><p>Nextflow services are unavailable in China. If you reside in China, you cannot access this service due to legal restrictions. If you are not in China, please contact us.</p></div><div><p><b>这是什么意思？</b></p><p>Nextflow服务在中国不可用。如果您居住在中国，由于法律限制，您将无法访问此服务。如果您不在中国，请与我们联系。</p></div>');
+//    res.send("yo @queryzi");
+//    next(req, res)
+// });
 
 const verifyAuthToken = (req, res, next) => {
     const tokenHeader = req.headers.authorization;
@@ -70,7 +70,6 @@ const verifyAuthToken = (req, res, next) => {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }))
-app.use(upload());
 app.use(cors());
 
 app.get('/change_password', async (req, res) => {
@@ -91,4 +90,6 @@ app.use('/', express.static((require("path")).join(__dirname, 'webpack')));
 app.get('*', (req, res) => {
     res.sendFile((require("path")).join(__dirname, 'webpack/index.html'));
 });
-app.listen(3000, async () => console.log('Ready!'));
+app.listen(3000, async () => {
+    console.log('Ready!')
+});

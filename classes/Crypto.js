@@ -7,7 +7,6 @@
 const crypto = require('crypto');
 const dotenv = require('dotenv');
 dotenv.config();
-const util = require('tweetnacl-util');
 const bcrypt = require('bcrypt');
 
 const KEY = Buffer.from(process.env.KEY, "base64");
@@ -20,6 +19,12 @@ const fs = require('fs');
  * Crypto - a handler for cryptographic functions. Securely handles cryptographic functions of the server, such as the encryption and decryption of data
  */
 class Crypto {
+    static async hashFile(pathOf) {
+        let file = fs.readFileSync(pathOf);
+        let hashSum = crypto.createHash('sha256');
+        hashSum.update(file);
+        return hashSum.digest('base64')
+    }
     // Bcrypt functions
     static async verifyPassword(password, passwordHash) {
         try {
@@ -39,7 +44,7 @@ class Crypto {
     }
     static async hashPasswordSalt(password, salt = process.env.SALT) { 
         try {
-            return await bcrypt.hash(password, Buffer.from(util.decodeBase64(salt)).toString("utf-8"));
+            return await bcrypt.hash(password, Buffer.from(salt, "base64").toString("utf-8"));
         } catch (error) {
             throw error;
         }
@@ -65,14 +70,14 @@ class Crypto {
     }
     
     // AES functions
-    static encrypt(data, key) {
-        const iv = util.encodeBase64(crypto.randomBytes(16));
-        const cipher = crypto.createCipheriv('aes-256-cbc', key, util.decodeBase64(iv));
+    static encrypt(data, key, ivaa=null) {
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
         let ciphered = cipher.update(data, 'utf-8', 'binary');
         ciphered += cipher.final('binary'); 
-        return Buffer.concat([util.decodeBase64(iv), Buffer.from(ciphered, 'binary')]).toString('base64');
+        return Buffer.concat([iv, Buffer.from(ciphered, 'binary')]).toString('base64');
     }
-    static decrypt(data, key) {
+    static decrypt(data, key, ivaaa=null) {
         const dataD = Buffer.from(data, 'base64');
         const iv = dataD.slice(0, 16);
         const dataMessage = dataD.slice(16);
@@ -108,9 +113,16 @@ class Crypto {
         return password;
     }
 
-    static generateKey() {
+    static generateID(length, chars = 'ABCDEFGHKLMNPQRSTVWYZ23456789') {
+        let generated = '';
+        for (let i = 0; i <= length; i++) {
+            generated += chars[crypto.randomInt(chars.length)];
+        }
+        return generated;
+    }
+
+    static generateKey(chars = 'ABCDEFGHKLMNPQRSTVWYZ23456789') {
         let key = '';
-        let chars = 'ABCDEFGHKLMNPQRSTVWYZ23456789'; 
         for (let i = 0; i <= 4; i++) {
             for (let j = 0; j <= 4; j++) {
                 key += chars[crypto.randomInt(chars.length)];

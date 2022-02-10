@@ -1,13 +1,13 @@
 {
   "name": "sso-system",
-  "version": "0.3.2254",
+  "version": "0.4.2278",
   "description": "API backend server for the Nextflow secure single sign on service",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "author": "Queryzi and ComputerGeek12",
-  "license": "GPLv3",
+  "license": "GPL-3.0",
   "dependencies": {
     "bcrypt": "^5.0.1",
     "cookie-parser": "^1.4.6",
@@ -16,13 +16,15 @@
     "express": "^4.17.2",
     "express-fileupload": "^1.2.1",
     "express-rate-limit": "^6.2.0",
+    "fastify": "^3.27.1",
     "googleapis": "^92.0.0",
     "jsonwebtoken": "^8.5.1",
     "mongodb": "^4.3.1",
+    "multer": "^1.4.4",
+    "mysql": "^2.18.1",
     "node-2fa": "^2.0.3",
     "nodemailer": "^6.7.2",
     "qrcode": "^1.5.0",
-    "tweetnacl": "^1.0.3",
-    "tweetnacl-util": "^0.15.1"
+    "sharp": "^0.30.0"
   }
 }

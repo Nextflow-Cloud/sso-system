@@ -1,12 +1,24 @@
 const express = require('express');
+const sharp = require('sharp');
 const app = express.Router();
 const jwt = require('jsonwebtoken');
+const fs = require('fs');
 const qr = require('qrcode');
 const Store = require("./classes/Store.js");
 const tokenStore = new Store('token');
 const mfaStore = new Store('mfa');
 const deleteMFA = new Store('delete');
 const SALT_T = process.env.SALT_T;
+const path = require('path');
+const multer = require('multer')
+const upload = multer({ dest: "avatars/", limits: { fileSize: 8388608 }, fileFilter: (req, file, callback) => {
+    const allowedExtensions = new RegExp(/.(jpg|png|jpeg|gif|jfif)$/gi)
+    let ext = path.extname(file.originalname);
+    if (!allowedExtensions.test(ext)) {
+        return callback("Only images are allowed.", false);
+    }
+    callback(null, true);
+}});
 const KEY = Buffer.from(process.env.KEY, "base64");
 const SERVER_PRIVATE_KEY = process.env.PRIVATE;
 const SERVER_PUBLIC_KEY = process.env.PUBLIC;
@@ -20,7 +32,10 @@ app.use(cookieParser());
 const cryptojs = require('crypto');
 const n2fa = require('node-2fa');
 const c = require('./classes/Crypto.js');
+const l = require('./classes/Log')
 const { google } = require("googleapis");
+const avatar = require('./models/avatar.js');
+const profile = require('./models/profile.js');
 const OAuth2 = google.auth.OAuth2;
 const transport = async () => {
     const oauth2Client = new OAuth2(
@@ -59,20 +74,35 @@ const transport = async () => {
     return transporter;
 }
 
+const DeprecationWarning = class extends Error {
+    constructor(message) {
+        super(message);
+        this.name = "DeprecationWarning";
+    }
+}
+
 const easteregg = eval(Buffer.from("WyJJIGNhbiBmZWVsIGl0IGNvbWluZyBpbiB0aGUgYWlyIHRvbmlnaHQiLCAiSSd2ZSBiZWVuIHdhaXRpbmcgZm9yIHRoaXMgbW9tZW50IGZvciBhbGwgbXkgbGlmZSIsICJDYW4geW91IGZlZWwgaXQgY29taW5nIGluIHRoZSBhaXIgdG9uaWdodCJd", "base64").toString("binary"));
 
 const verifyAuthToken = (req, res, next) => {
     const tokenHeader = req.headers.authorization;
 
     if (typeof tokenHeader !== 'undefined') {
-        const bearer = JSON.parse(tokenHeader);
+        
+        let bearerToken;
 
-        const bearerToken = bearer.token;
+        try {
+            // backwards compatibility
+            bearerToken = JSON.parse(tokenHeader).token;
+            // res.status(500).send(new DeprecationWarning("Warning: you just sent a deprecated token"));
+        } catch (e) {
+            bearerToken = tokenHeader.split('Bearer ')[1];
+        }
 
         req.token = bearerToken;
 
         jwt.verify(req.token, process.env.KEY, async (err, authData) => {
             if (err) {
+                console.error(err)
                 res.status(401).send("Token is invalid or has expired");
             } else {
                 req.email = authData.user.email;
@@ -89,7 +119,7 @@ const verifyAuthToken = (req, res, next) => {
     } else {
         res.status(401).send("Token not provided");
     }
-}; 
+};
 
 app.post('/login', async (req, res) => {
     if (!req.body || !req.body.stage) {
@@ -124,7 +154,7 @@ app.post('/login', async (req, res) => {
         var verify = await c.verifyPassword(password, user11.passwordHash);
         if (verify) {
             var userObj = {
-                id: c.generateKey(),
+                id: c.decrypt(user11.idEncrypted, KEY),
                 username: c.decrypt(user11.usernameEncrypted, KEY, IV),
                 email: fetchedToken.email
             };
@@ -178,7 +208,7 @@ app.post('/login', async (req, res) => {
             var token = n2fa.verifyToken(c.decrypt(user11.twoFactorCodeEncrypted, KEY, IV), code);
             if (token) {
                 var userObj = {
-                    id: c.generateKey(),
+                    id: c.decrypt(user11.idEncrypted, KEY),
                     username: c.decrypt(user11.usernameEncrypted, KEY, IV),
                     email: fetchedToken.email.toString()
                 };
@@ -199,8 +229,9 @@ app.post('/login', async (req, res) => {
                     let index = user11.twoFactorBackupCodesHashed.findIndex(r => c.verifyPassword(code, r) === true);
                     let authenticatedCode = user11.twoFactorBackupCodesHashed[index];
                     if (c.verify(authenticatedCode, user11.twoFactorBackupCodesSignature[index], SERVER_PUBLIC_KEY)) {
+                        // console.log(c.decrypt(user11.idEncrypted, KEY))
                         var userObj = {
-                            id: c.generateKey(),
+                            id: c.decrypt(user11.idEncrypted, KEY),
                             username: c.decrypt(user11.usernameEncrypted, KEY, IV),
                             email: fetchedToken.email.toString()
                         };
@@ -251,6 +282,190 @@ app.patch('/user/password', verifyAuthToken, async (req, res) => {
         }
     })
 });
+
+app.patch('/user/avatar', verifyAuthToken, upload.single("avatar"), async (req, res) => {
+    let doc = await avatar.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
+    let val = doc ? true : false; 
+    let file = req.file;
+    if (!val) {
+        // return res.status(427).send('You need to have a existing profile picture to change it.')
+        upload.single("avatar")(req, res, async (err) => {
+            if (err) return res.status(413).send('Invalid file.');
+            jwt.verify(req.token, process.env.KEY, async (error, result) => {
+                if (error) return console.error(error);
+                let emailHash = await c.hashPasswordSalt(req.email, process.env.SALT);
+                let idHash = await c.hashPasswordSalt(result.user.id, process.env.SALT);
+                let fileType = path.extname(file.originalname).split('.')[1];
+                await avatar.create({
+                    idHash,
+                    emailHash,
+                    fileName: file.filename,
+                    fileType: path.extname(file.originalname).split('.')[1] === 'gif' ? 'gif' : 'png',
+                    originalName: file.originalname
+                });
+                if (fileType.toLowerCase() === 'gif') {
+                    res.send('Sucess!');
+                } else {
+                    sharp(path.join(__dirname, "/avatars", file.filename)).resize({ height: 512, width: 512 }).toFormat('png').toFile(file.filename).then((resul) => {
+                        fs.copyFile(file.filename, path.join(__dirname, "/avatars", file.filename), (e) => {
+                            if (e) res.status(500).send('Server error');
+                            fs.unlink(file.filename, (er) => {
+                                if (er) res.status(500).send('Server error');
+                                res.send('Sucess!');
+                            })
+                        })
+                    }).catch((e) => res.status(500).send('Server error'));
+                }
+            });
+        });
+        return;
+    }
+    upload.single("avatar")(req, res, async (err) => {
+        if (err) return res.status(413).send('Invalid file.');
+        jwt.verify(req.token, process.env.KEY, async (error, result) => {
+            if (error) return console.error(error);
+            let emailHash = await c.hashPasswordSalt(req.email, process.env.SALT);
+            let idHash = await c.hashPasswordSalt(result.user.id, process.env.SALT);
+            await avatar.create({
+                idHash,
+                emailHash,
+                fileName: file.filename,
+                fileType: path.extname(file.originalname).split('.')[1] === 'gif' ? 'gif' : 'png',
+                originalName: file.originalname
+            });
+            res.send('Sucess!')
+            await avatar.findOneAndDelete({ emailHash });
+            return fs.unlink(path.join(__dirname, "/avatars", doc.fileName), (err) => {
+                if (err) {
+                    console.error(err);
+                    // /home/administrator/sso-system/avatars/d699c8d5d9f100f39e9b6b2be2a4a182
+                    return res.status(500).send('Error!');
+                }
+                return 2;
+            });
+        });
+    });
+    // if (doc) {
+    //     return res.send(true);
+    // } else {
+    //     return res.send(false);
+    // }
+});
+
+app.post('/user/avatar', verifyAuthToken, upload.single("avatar"), async (req, res) => {
+    let file = req.file;
+    let doc = await avatar.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
+    if (doc) {
+        return fs.unlink(path.join(__dirname, file.path), (err) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).send('Error!');
+            } else {
+                return res.status(400).send('You can\'t create a profile picture if you already have one.');
+            }
+        })
+    }
+    upload.single("avatar")(req, res, async (err) => {
+        if (err) return res.status(413).send('Invalid file.');
+        jwt.verify(req.token, process.env.KEY, async (error, result) => {
+            if (error) return console.error(error);
+            let emailHash = await c.hashPasswordSalt(req.email, process.env.SALT);
+            let idHash = await c.hashPasswordSalt(result.user.id, process.env.SALT);
+            let fileType = path.extname(file.originalname).split('.')[1];
+            await avatar.create({
+                idHash,
+                emailHash,
+                fileName: file.filename,
+                fileType: path.extname(file.originalname).split('.')[1] === 'gif' ? 'gif' : 'png',
+                originalName: file.originalname
+            });
+            if (fileType.toLowerCase() === 'gif') {
+                res.send('Sucess!');
+            } else {
+                sharp(path.join(__dirname, '/avatars', file.filename)).resize({ height: 512, width: 512 }).toFormat('png').toFile(file.filename).then((resul) => {
+                    fs.copyFile(file.filename, path.join(__dirname, '/avatars', file.filename), (e) => {
+                        if (e) res.status(500).send('Server error');
+                        fs.unlink(file.filename, (er) => {
+                            if (er) res.status(500).send('Server error');
+                            res.send('Sucess!');
+                        })
+                    })
+                }).catch((e) => res.status(500).send('Server error'));
+            }
+        });
+    });
+});
+
+app.get('/user/:id?/profile/picture', verifyAuthToken, async (req, res) => {
+    if (req.params.id) {
+        let checkExists = await register.findOne({ idHash: await c.hashPasswordSalt(req.params.id, process.env.SALT) })
+        if (!checkExists) {
+            return res.status(407).send('User was not found.');
+        }
+        let doc = await avatar.findOne({ idHash: await c.hashPasswordSalt(req.params.id, process.env.SALT) });
+        return res.send(doc ? true : false);
+    } else {
+        let doc = await avatar.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
+        return res.send(doc ? true : false);
+    }
+});
+
+app.get('/user/:id?/avatar', verifyAuthToken, async (req, res) => {
+    if (req.params.id) {
+        let doc = await avatar.findOne({ idHash: await c.hashPasswordSalt(req.params.id, process.env.SALT) });
+        let checkExists = await register.findOne({ idHash: await c.hashPasswordSalt(req.params.id, process.env.SALT) })
+        if (!checkExists) {
+            return res.status(407).send('User was not found.');
+        }
+        jwt.verify(req.token, process.env.KEY, (err, result) => {
+            if (err) return res.status(500).send('There was a error on our side, we will work on fixing that bug.');
+            if (doc) {
+                fs.access(path.join(__dirname, '/avatars', doc.fileName), fs.constants.F_OK, (error) => {
+                    if (error) throw error;
+                    res.setHeader('content-type', 'image/' + doc.fileType);
+                    res.sendFile(path.join(__dirname, '/avatars', doc.fileName));
+                })
+            } else {
+                res.sendFile(path.join(__dirname, 'default.jpg'));
+            }
+            // let id = await c.hashPasswordSalt(JSON.parse(req.headers.authorization).token + result.user.email, process.env.SALT);
+        })
+    } else {
+        let doc = await avatar.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
+        jwt.verify(req.token, process.env.KEY, (err, result) => {
+            if (err) return res.status(500).send('There was a error on our side, we will work on fixing that bug.');
+            if (doc) {
+                fs.access(path.join(__dirname, '/avatars', doc.fileName), fs.constants.F_OK, (error) => {
+                    if (error) throw error;
+                    res.setHeader('content-type', 'image/' + doc.fileType);
+                    res.sendFile(path.join(__dirname, '/avatars', doc.fileName));
+                })
+            } else {
+                res.sendFile(path.join(__dirname, 'default.jpg'));
+            }
+            // let id = await c.hashPasswordSalt(JSON.parse(req.headers.authorization).token + result.user.email, process.env.SALT);
+        })
+    }
+})
+
+app.delete('/user/avatar', verifyAuthToken, async (req, res) => {
+    let doc = await avatar.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
+    if (doc) {
+        fs.unlink(path.join(__dirname, '/avatars', doc.fileName), async (err) => {
+            if (err) { console.error(err); res.status(500).send('Server side error.') }
+            else {
+                await avatar.findOneAndDelete({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
+                res.send('Deleted avatar!');
+            }
+        })
+    } else {
+        res.status(412).send('Can\'t delete non-existant profile picture');
+    }
+})
+
+app.get('/test_file', async (req, res) => {
+    res.sendFile(path.join(__dirname, 'default.jpg'));
+})
 
 app.post('/forgot/password', async (req, res) => {
     let email = req.body.email;
@@ -444,9 +659,8 @@ app.post('/reset/:code', async (req, res) => {
             let email = await c.decrypt(doc.emailEncrypted, KEY, IV);
             let docer = await register.findOne({ emailHash: (await c.hashPasswordSalt(email, process.env.SALT)) });
             if (!docer) {
-                res.status(401).send('Code associated with that account doesn\'t work due to account being deleted.')
-                await forgetPassword.findOneAndDelete({ idHash: await c.hashPasswordSalt(code, process.env.SALT) })
-                
+                res.status(401).send('Code associated with that account doesn\'t work due to account being deleted.');
+                await forgetPassword.findOneAndDelete({ idHash: await c.hashPasswordSalt(code, process.env.SALT) });
             } else {
                 const passwordHashed = await c.hashPassword(password);
                 await register.findOneAndUpdate({ emailHash: await c.hashPasswordSalt(email, process.env.SALT) }, { passwordHash: passwordHashed });
@@ -455,7 +669,7 @@ app.post('/reset/:code', async (req, res) => {
             }
         } else {
             res.status(401).send('That code does not exist anymore!');
-            await forgetPassword.findOneAndDelete({ idHash: await c.hashPasswordSalt(code, process.env.SALT) })
+            await forgetPassword.findOneAndDelete({ idHash: await c.hashPasswordSalt(code, process.env.SALT) });
         }
     } else {
         res.status(401).send('That code does not exist anymore!');
@@ -483,24 +697,43 @@ app.post('/user', async (req, res) => {
         var twoFactorSignature = c.sign(twoFactorEncrypted, SERVER_PRIVATE_KEY);
         var twoFactorCodeEncrypted = c.encrypt('', KEY, IV);
         var twoFactorCodeSignature = c.sign(twoFactorCodeEncrypted, SERVER_PRIVATE_KEY)
+        var id = c.generateKey();
+        var idHash = await c.hashPasswordSalt(id, process.env.SALT);
+        var idEncrypted = c.encrypt(id, KEY);
+        var emailPublic = c.encrypt('false', KEY);
+        var emailPublicSignature = c.sign(emailPublic, SERVER_PRIVATE_KEY);
+        var descriptionEncrypted = c.encrypt('', KEY);
+        var websiteEncrypted = c.encrypt('', KEY);
         await register.create({
+            idHash,
+            idEncrypted,
             usernameHash: hash,
             usernameEncrypted: encrypted,
-            emailEncrypted: emailEncrypted,
-            emailHash: emailHash,
-            nameEncrypted: nameEncrypted,
-            passwordHash: passwordHash,
-            twoFactorSignature: twoFactorSignature,
-            twoFactorEncrypted: twoFactorEncrypted,
-            twoFactorCodeEncrypted: twoFactorCodeEncrypted,
-            twoFactorCodeSignature: twoFactorCodeSignature,
+            emailEncrypted,
+            emailHash,
+            nameEncrypted,
+            passwordHash,
+            twoFactorSignature,
+            twoFactorEncrypted,
+            twoFactorCodeEncrypted,
+            twoFactorCodeSignature,
             twoFactorBackupCodesHashed: [],
             twoFactorBackupCodesEncrypted: [],
             twoFactorBackupCodesSignature: [],
-        })
+        });
+
+        await profile.create({
+            idHash,
+            emailHash,
+            emailEncrypted,
+            emailPublic,
+            emailPublicSignature,
+            descriptionEncrypted,
+            websiteEncrypted
+        });
 
         var userObj = {
-            id: c.generateKey(),
+            id: id,
             username: username,
             email: email
         };
@@ -518,14 +751,31 @@ app.post('/user', async (req, res) => {
     }
 });
 
-app.get('/email', verifyAuthToken, async (req, res) => {
-    jwt.verify(JSON.parse(req.headers.authorization).token, process.env.KEY, async (err, authData) => {
-        if (err) {
-            res.sendStatus(401);
+app.get('/user/:id?/email', verifyAuthToken, async (req, res) => {
+    if (req.params.id) {
+        let prof = await profile.findOne({ idHash: await c.hashPasswordSalt(req.params.id, process.env.SALT) });
+        if (prof) {
+            let tmpemail = '';
+            if (c.decrypt(prof.emailPublic, KEY) === 'true') {
+                tmpemail = c.decrypt(prof.emailEncrypted, KEY);
+            }
+            let emailAvailable = false;
+            if (c.decrypt(prof.emailPublic, KEY) === 'true' && c.verify(prof.emailPublic, prof.emailPublicSignature, SERVER_PUBLIC_KEY)) {
+                emailAvailable = true;
+            }
+            res.send({ email: tmpemail, emailAvailable })
         } else {
-            res.send(authData.user.email); 
+            res.status(409).send('User does not exist.');
         }
-    })
+    } else {
+        jwt.verify(JSON.parse(req.headers.authorization).token, process.env.KEY, async (err, authData) => {
+            if (err) {
+                res.sendStatus(401);
+            } else {
+                res.send(authData.user.email); 
+            }
+        })
+    }
 });
 
 app.get('/user/mfa/check', verifyAuthToken, async (req, res) => {
@@ -645,7 +895,9 @@ app.delete("/user", verifyAuthToken, async (req, res) => {
     if (req.body.stage === 1) {
         let doc = await register.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) })
         if (doc) {
-            if (c.verifyPassword(req.body.password, doc.passwordHash)) {
+            // // the only logical step would be to:
+            // console.error(await c.verifyPassword("aerhuariwe", doc.passwordHash));
+            if (await c.verifyPassword(req.body.password, doc.passwordHash)) {
                 jwt.verify(req.token, process.env.KEY, async (err, authData) => {
                     if (err) return res.sendStatus(401);
                     else { 
@@ -662,10 +914,8 @@ app.delete("/user", verifyAuthToken, async (req, res) => {
                             });
                         } else {
                             let hashedData = await c.hashPasswordSalt(authData.user.email, process.env.SALT);
-                            register.deleteOne({ emailHash: hashedData }, async (err, doc) => {
-                                if (err) return res.sendStatus(500);
-                                else return res.status(204).send();
-                            });
+                            profile.deleteOne({ emailHash: hashedData });
+                            register.deleteOne({ emailHash: hashedData }).then(() => res.status(200).send({})).catch(() => res.sendStatus(500));
                             res.cookie('token', '', { domain: '.nextflow.cloud', secure: true, expires: new Date(Date.now() + 1) });
                             await blacklist.create({
                                 emailHash: hashedData,
@@ -690,17 +940,15 @@ app.delete("/user", verifyAuthToken, async (req, res) => {
         let code = authorizedHeaders.code;
         let doc = await register.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
         if (doc) {
-            if (c.verifyPassword(req.body.password, doc.passwordHash)) {
+            if (await c.verifyPassword(req.body.password, doc.passwordHash)) {
                 jwt.verify(req.token, process.env.KEY, async (err, authData) => {
                     if (err) return res.sendStatus(401);
                     else {
                         var token = n2fa.verifyToken(c.decrypt(doc.twoFactorCodeEncrypted, KEY, IV), code);
                         if (token) {
                             let hashedData = await c.hashPasswordSalt(authData.user.email, process.env.SALT);
-                            register.deleteOne({ emailHash: hashedData }, async (err, doc) => {
-                                if (err) return res.sendStatus(500);
-                                else return res.status(204).send();
-                            });
+                            profile.deleteOne({ emailHash: hashedData });
+                            register.deleteOne({ emailHash: hashedData }).then(() => res.status(200).send({})).catch(() => res.sendStatus(500));
                             res.cookie('token', '', { domain: '.nextflow.cloud', secure: true, expires: new Date(Date.now() + 1) });
                             await blacklist.create({
                                 emailHash: hashedData,
@@ -712,10 +960,8 @@ app.delete("/user", verifyAuthToken, async (req, res) => {
                                 let authenticatedCode = doc.twoFactorBackupCodesHashed[index];
                                 if (c.verify(authenticatedCode, doc.twoFactorBackupCodesSignature[index], SERVER_PUBLIC_KEY)) {
                                     let hashedData = await c.hashPasswordSalt(authData.user.email, process.env.SALT);
-                                    register.deleteOne({ emailHash: hashedData }, async (err, doc) => {
-                                        if (err) return res.sendStatus(500);
-                                        else return res.status(200).send({ 'b': 'a' });
-                                    });
+                                    profile.deleteOne({ emailHash: hashedData });
+                                    register.deleteOne({ emailHash: hashedData }).then(() => res.status(200).send({})).catch(() => res.sendStatus(500));
                                     await blacklist.create({
                                         emailHash: hashedData,
                                         tokenHash: await c.hashPasswordSalt(req.token, SALT_T)
@@ -744,11 +990,20 @@ app.get('/ip', async (req, res) => {
     res.send({ ip });
 });
 
-app.get('/user/username', verifyAuthToken, async (req, res) => {
-    jwt.verify(req.token, process.env.KEY, async (err, authData) => {
-        if (err) return res.sendStatus(401);
-        res.status(200).send({ username: authData.user.username });
-    })
+app.get('/user/:id?/username', verifyAuthToken, async (req, res) => {
+    if (req.params.id) {
+        let doc = await register.findOne({ idHash: await c.hashPasswordSalt(req.params.id, process.env.SALT) });
+        if (doc) {
+            res.send({ username: c.decrypt(doc.usernameEncrypted, KEY) });
+        } else {
+            res.status(409).send('User does not exist.');
+        }
+    } else {
+        jwt.verify(req.token, process.env.KEY, async (err, authData) => {
+            if (err) return res.sendStatus(401);
+            res.status(200).send({ username: authData.user.username });
+        })
+    }
 })
 
 app.get('/user/token', async (req, res) => {
@@ -759,6 +1014,113 @@ app.get('/user/token', async (req, res) => {
     }
 })
 
+app.get('/user/id', verifyAuthToken, async (req, res) => {
+    let doc = await register.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
+    if (doc) {
+        res.send({ id: c.decrypt(doc.idEncrypted, KEY) });
+    } else {
+        res.send({ id: null });
+    }
+})
+
+app.patch('/user/email-visible', verifyAuthToken, async (req, res) => {
+    let prof = await profile.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
+    if (prof) {
+        let previousV = false;
+        if (c.decrypt(prof.emailPublic, KEY) === 'true' && c.verify(prof.emailPublic, prof.emailPublicSignature, SERVER_PUBLIC_KEY)) {
+            previousV = true;
+        }
+
+        let currentV = previousV ? false : true;
+        let newV = c.encrypt(currentV.toString(), KEY);
+        let newVSigned = c.sign(newV, SERVER_PRIVATE_KEY);
+        await profile.findOneAndUpdate({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) }, { emailPublic: newV, emailPublicSignature: newVSigned });
+
+        res.sendStatus(204);
+    } else {
+        res.send('You don\'t exist.')
+    }
+})
+
+app.patch('/user/description', verifyAuthToken, async (req, res) => {
+    console.log(req.body)
+    let desc = req.body.description;
+
+    let descEncrypted = c.encrypt(desc, KEY);
+
+    await profile.findOneAndUpdate({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) }, { descriptionEncrypted: descEncrypted });
+
+    res.send('Set description!')
+});
+
+app.patch('/user/website', verifyAuthToken, async (req, res) => {
+    let website = req.body.website;
+
+    let websiteEncrypted = c.encrypt(website, KEY);
+
+    await profile.findOneAndUpdate({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) }, { websiteEncrypted });
+
+    res.send('Set website!')
+});
+
+app.get('/user/:id?', verifyAuthToken, async (req, res) => {
+    let userObj = {};
+    if (req.params.id) {
+        let doc = await register.findOne({ idHash: await c.hashPasswordSalt(req.params.id, process.env.SALT) });
+        let prof = await profile.findOne({ idHash: await c.hashPasswordSalt(req.params.id, process.env.SALT) });
+        if (doc) {
+            // res.send({ username: c.decrypt(doc.usernameEncrypted, KEY) });
+            let tmpemail = '';
+            if (c.decrypt(prof.emailPublic, KEY) === 'true' && c.verify(prof.emailPublic, prof.emailPublicSignature, SERVER_PUBLIC_KEY)) {
+                tmpemail = c.decrypt(prof.emailEncrypted, KEY);
+            }
+            let emailAvailable = false;
+            if (c.decrypt(prof.emailPublic, KEY) === 'true' && c.verify(prof.emailPublic, prof.emailPublicSignature, SERVER_PUBLIC_KEY)) {
+                emailAvailable = true;
+            }
+            userObj.username = c.decrypt(doc.usernameEncrypted, KEY);
+            userObj.id = req.params.id;
+            userObj.emailAvailable = emailAvailable;
+            userObj.email = tmpemail;
+            userObj.website = c.decrypt(prof.websiteEncrypted, KEY);
+            userObj.description = c.decrypt(prof.descriptionEncrypted, KEY);
+            userObj.avatar = `https://secure.nextflow.cloud/api/user/${req.params.id}/avatar`;
+
+            res.send(userObj);
+        } else {
+            res.status(409).send('User does not exist.');
+        }
+    } else {
+        let doc = await register.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
+        let prof = await profile.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
+        if (prof) {
+            let emailAvailable = false;
+            if (c.decrypt(prof.emailPublic, KEY) === 'true' && c.verify(prof.emailPublic, prof.emailPublicSignature, SERVER_PUBLIC_KEY)) {
+                emailAvailable = true;
+            }
+            userObj.username = c.decrypt(doc.usernameEncrypted, KEY);
+            userObj.id = c.decrypt(doc.idEncrypted, KEY);
+            userObj.emailAvailable = emailAvailable;
+            userObj.email = req.email;
+            userObj.website = c.decrypt(prof.websiteEncrypted, KEY);
+            userObj.description = c.decrypt(prof.descriptionEncrypted, KEY);
+            userObj.avatar = `https://secure.nextflow.cloud/api/user/${c.decrypt(doc.idEncrypted, KEY)}/avatar`; // github avatar
+            userObj.privateAvatar = `https://secure.nextflow.cloud/api/user/avatar`;
+            // userObj.avatar = `https://secure.nextflow.cloud/user/${c.decrypt(doc.idEncrypted, KEY)}/avatar`; // custom avatar
+            // user obj: { username: '', id: '', email: '', website: '', description: '', avatar: '' }
+            // res.send({ username: c.decrypt(doc.usernameEncrypted, KEY), id: c.decrypt(doc.idEncrypted, KEY), email: req.email, website: c.decrypt(prof.websiteEncrypted, KEY), description: c.decrypt(prof.descriptionEncrypted, KEY), avatar: `https://secure.nextflow.cloud/user/${c.decrypt(doc.idEncrypted, KEY)}/avatar` });
+            // @queryzi - no clue why this is not working but it is working for me so I'm not going to touch it for now :D 
+            // i think it's because the avatar is not being sent to the client, but it's not being sent to the client because it's not being sent to the client
+            // i know
+            // fun fact this is a robot
+
+            res.send(userObj);
+        } else {
+            res.status(409).send('You don\'t exist.');
+        }
+    }
+})
+
 app.post("/logout", verifyAuthToken, async (req, res) => {
     res.cookie('token', '', { domain: '.nextflow.cloud', secure: true, expires: new Date(Date.now() + 1) });
     await blacklist.create({
@@ -766,12 +1128,14 @@ app.post("/logout", verifyAuthToken, async (req, res) => {
         tokenHash: await c.hashPasswordSalt(req.token, SALT_T)
     });
     res.status(200).send('Logged out!');
-}); 
+});
+
+app.all('/*', (req, res) => {
+    res.status(404).send('Could not find the page, requested on the API.');
+})
+
+// app.use((req, res) => {
+    // res.status(404).send('Could not find the page, requested on the API.');
+// });
 
 module.exports = app;
-
-// export.js
-// module.exports = class;
-// module __.exports = className; [tab]
-// pressed tab
-// module.exports = className;

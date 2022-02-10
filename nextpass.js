@@ -3,6 +3,9 @@ const app = express.Router();
 const blacklist = require('./models/blacklist');
 const c = require('./classes/Crypto');
 const jwt = require('jsonwebtoken')
+const upload = require("express-fileupload");
+
+app.use(upload());
 
 const verifyAuthToken = (req, res, next) => {
     const tokenHeader = req.headers.authorization;
