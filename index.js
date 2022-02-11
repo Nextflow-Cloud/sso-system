@@ -28,10 +28,6 @@ database.on("connected", () => {
     console.log("Connected to database");
     // Initiate our custom Logger when the database is connected.
     database.logger = new Logger();
-    
-    // nope bad idea WAIT ACTUALLY maybe not so bad of an idea
-    // BUT DUDE STILL BAD IDEA because you should still wait for the database to connect
-    // to instantiate the logger just to be safe
 });
 await database.connect();
 
@@ -84,9 +80,5 @@ app.get('/forgot/:code', async (req, res) => {
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'webpack/index.html'));
 });
-// note dude es6 supports await in root
-// so basically the database has completely connected and instantiate
-// so this should work
-// wtf it says database is connected but subsequently says database is not connected
 
 app.listen(3000, () => console.enhancedLog("Express", 'Ready! Listening on port 3000 🚀')); // 3000, 3005
