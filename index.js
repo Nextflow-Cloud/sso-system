@@ -35,11 +35,6 @@ database.on("connected", () => {
 });
 await database.connect();
 
-console.error(new Error('error'));
-console.warn("WOW, i'm colorful!!");
-console.info("yo hi");
-console.debug("debugging!!! :D no more timeout");
-
 // var whitelist = ['https://secure.nextflow.cloud', 'https://chat.nextflow.cloud', 'https://ss.nextflow.cloud', 'http://localhost:3001', 'https://test.nextflow.cloud'];
 // var corsOptions = {
 //     origin: function (origin, callback) {
@@ -94,4 +89,4 @@ app.get('*', (req, res) => {
 // so this should work
 // wtf it says database is connected but subsequently says database is not connected
 
-app.listen(3001, () => console.enhancedLog("Express", 'Ready! Listening on port 3001 🚀')); // 3000, 3005
+app.listen(3000, () => console.enhancedLog("Express", 'Ready! Listening on port 3000 🚀')); // 3000, 3005
