@@ -16,7 +16,7 @@ import Database from "./classes/ExpressDB.js";
 import Crypto from "./classes/Crypto.js";
 import Logger from "./classes/Logger.js";
 
-import forgotPasswords from "./models/forgotPasswords.js"; // let's not forget to add .js because es modules are weird
+import forgotPasswords from "./models/forgotPasswords.js";
 
 import api from "./api.js";
 import nextpass from "./nextpass.js";

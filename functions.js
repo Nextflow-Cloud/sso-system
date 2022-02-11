@@ -38,7 +38,6 @@ export const verifyAuthToken = (req, res, next) => {
         try {
             // backwards compatibility
             bearerToken = JSON.parse(tokenHeader).token;
-            // res.status(500).send(new DeprecationWarning("Warning: you just sent a deprecated token"));
         } catch (e) {
             bearerToken = tokenHeader.split("Bearer ")[1];
         }

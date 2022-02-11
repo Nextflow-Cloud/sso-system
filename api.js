@@ -18,7 +18,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 import c from "./classes/Crypto.js";
-import l from "./classes/Log.js";
 
 import Store from "./classes/Store.js";
 const tokenStore = new Store("token");

@@ -4,7 +4,7 @@ import chalk from "chalk";
 
 import Database from './ExpressDB.js';
 import Crypto from "./Crypto.js";
-import ErrorError from './ErrorError.js';
+import LoggerError from './LoggerError.js';
 
 const SERVER_PRIVATE_KEY = process.env.PRIVATE;
 const KEY = Buffer.from(process.env.KEY, "base64");
@@ -38,9 +38,7 @@ class Logger {
         this.logStream.write(logString + "\n");
     }
     error(error) {
-        if (!(error instanceof Error)) {
-            throw new Error('You must have a error in the constructor.');
-        }
+        if (!(error instanceof Error)) throw new LoggerError("You must have a error in the constructor.");
         // if (!this.databaseErrors.database.connected) {
             // this.enhancedWarn("Logger", 'Database is not connected.'); 
         // }
@@ -63,12 +61,10 @@ class Logger {
     }
 
     enhancedError(aspect, error) {
-        if (!(error instanceof Error)) {
-            throw new Error('You must have a error in the constructor.');
-        }
-        if (!this.databaseErrors.client.connected) {
-            throw new Error('Database is not connected.');
-        }
+        if (!(error instanceof Error)) throw new Error("You must have a error in the constructor.");
+        // if (!this.databaseErrors.client.connected) {
+        //     throw new Error('Database is not connected.');
+        // }
         var id = Crypto.generateID(15, '0123456789');
 
         const errorObj = {
@@ -117,13 +113,10 @@ class Logger {
         this.logStream.write(logString + "\n");
     }
     dateString(date) {
-        if (!(date instanceof Date)) {
-            throw new ErrorError('Not a date.'); // oopsies, you've just come across a non-date!!! :D
-        }
-
-        let format = 'MM-dd-yyyy_hh-mm-ss';
+        if (!(date instanceof Date)) throw new LoggerError("Not a date.");
+        let format = "MM-dd-yyyy_hh-mm-ss";
         var conversion = {
-            M: date.getMonth() + 1, // bruh month is 0 indexed so month +1
+            M: date.getMonth() + 1,
             d: date.getDate(),
             h: date.getHours(),
             m: date.getMinutes(),
@@ -131,17 +124,7 @@ class Logger {
         }
         format = format.replace(/(M+|d+|h+|m+|s+)/g, v => ((v.length > 1 ? "0" : "") + conversion[v.slice(-1)]).slice(-2));
         return format.replace(/(y+)/g, v => date.getFullYear().toString().slice(-v.length));
-        // const month = date.getMonth() + 1;
-        // const day = date.getDate();
-        // const year = date.getFullYear();
-        // const hour = date.getHours();
-        // const minute = date.getMinutes();
-        // const second = date.getSeconds();
-        // return `${month}-${day}-${year}_${hour}-${minute}-${second}`; // 02-10-2022_17-23-45
     }
-
-    // dude what other part didnt work?
-
     // we can work on this later.
 
     // async getId() {
@@ -152,6 +135,9 @@ class Logger {
     //     }
     //     if (Crypto.veifyPassword(pwd, process.env.hashed))
     // }
+    // ok also we switch to fastify soon
+    // sudo nano /snap/bin/npm
+    // new Server(port, uri, encryptionOptions, log = "VERBOSE")
 }
 
 export default Logger;
