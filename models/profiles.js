@@ -1,6 +1,6 @@
-const { Schema } = require('../classes/ExpressDB');
+import Database from "../classes/ExpressDB.js";
 
-module.exports = new Schema('profile', {
+export default new Database.Schema("profile", {
     idHash: String,
     emailHash: String,
     emailEncrypted: String,

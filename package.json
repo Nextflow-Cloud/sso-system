@@ -1,8 +1,9 @@
 {
   "name": "sso-system",
-  "version": "0.4.2278",
+  "version": "0.5.2283-dev",
   "description": "API backend server for the Nextflow secure single sign on service",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js"
   },
@@ -10,6 +11,7 @@
   "license": "GPL-3.0",
   "dependencies": {
     "bcrypt": "^5.0.1",
+    "chalk": "^5.0.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^14.2.0",
@@ -25,6 +27,6 @@
     "node-2fa": "^2.0.3",
     "nodemailer": "^6.7.2",
     "qrcode": "^1.5.0",
-    "sharp": "^0.30.0"
+    "sharp": "^0.30.1"
   }
 }

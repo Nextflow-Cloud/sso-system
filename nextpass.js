@@ -1,41 +1,14 @@
-const express = require("express");
+import express from "express";
 const app = express.Router(); 
-const blacklist = require('./models/blacklist');
-const c = require('./classes/Crypto');
-const jwt = require('jsonwebtoken')
-const upload = require("express-fileupload");
+
+import jwt from "jsonwebtoken";
+import upload from "express-fileupload";
+
+import c from "./classes/Crypto.js";
+
+import { verifyAuthToken } from "./functions.js";
 
 app.use(upload());
-
-const verifyAuthToken = (req, res, next) => {
-    const tokenHeader = req.headers.authorization;
-
-    if (typeof tokenHeader !== 'undefined') {
-        const bearer = JSON.parse(tokenHeader);
-
-        const bearerToken = bearer.token;
-
-        req.token = bearerToken;
-
-        jwt.verify(req.token, process.env.KEY, async (err, authData) => {
-            if (err) {
-                res.sendStatus(403);
-            } else {
-                req.email = authData.user.email;
-                let doc = await blacklist.findOne({ emailHash: await c.hashPasswordSalt(authData.user.email, process.env.SALT), tokenHash: await c.hashPasswordSalt(req.token, process.env.SALT_T) });
-                if (doc) {
-                    res.status(403).send('Forbidden, illegal token used.');
-                } else {
-                    req.username = authData.user.username;
-                    req.id = authData.user.id;
-                    next();
-                }
-            };
-        });
-    } else {
-        res.status(403).send('Forbidden');
-    }
-};
 
 app.get('/db/hash', verifyAuthToken, async (req, res) => {
     let id;
@@ -54,7 +27,6 @@ app.get('/db/hash', verifyAuthToken, async (req, res) => {
             })
         };
     });
-
 });
 
 app.get('/db', verifyAuthToken, async (req, res) => {
@@ -74,12 +46,9 @@ app.get('/db', verifyAuthToken, async (req, res) => {
             })
         };
     });
-
 });
 
 app.post('/db/hash', verifyAuthToken, async (req, res) => {
-    // console.log(req.headers);
-    // console.log(req.body);
     if (req.files) {
         var file = req.files.db_backup
         if (file) {
@@ -106,16 +75,7 @@ app.post('/db/hash', verifyAuthToken, async (req, res) => {
     } else {
         res.send('Invalid1').status(400);
     }
-}); // dude wait wait wait wait wait 
-// dude so how do you store another db
-// if you already have a db in here
-// bruh
-// dude dude dude
-// say someone creates a new vault
-// then their new vault overwrites
-// the old one!?!?!?!?!!?
-// that is concerning
-// wdym
+});
 
 app.post('/db', verifyAuthToken, async (req, res) => {
     if (req.files) {
@@ -146,4 +106,4 @@ app.post('/db', verifyAuthToken, async (req, res) => {
     }
 });
 
-module.exports = app;
+export default app;

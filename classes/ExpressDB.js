@@ -3,9 +3,9 @@
  * Copyright (c) 2022 Nextflow Technologies B.V. All rights reserved.
  * 
  */
-const { MongoClient } = require('mongodb');
-const DatabaseError = require('./DatabaseError.js');
-const { EventEmitter } = require('events');
+import { MongoClient } from "mongodb";
+import DatabaseError from "./DatabaseError.js";
+import { EventEmitter } from "events";
 
 /**
  * Database - a database manager for the server. Includes secure handling of database policies, and loading models and schemas.
@@ -149,4 +149,4 @@ class Schema {
 }
 
 Database.Schema = Schema; 
-module.exports = Database; 
+export default Database;
