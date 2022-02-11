@@ -1,4 +1,16 @@
+const mongoose = require('mongoose');
+
 module.exports = {
+    initiate: () => {
+        mongoose.connect(process.env.URI, { 
+            useUnifiedTopology: true, 
+            useFindAndModify: false, 
+            useNewUrlParser: true, 
+            useCreateIndex: true 
+        }).then(() => {
+            console.log('Connected to Redis.');
+        }).catch((e) => console.error(e));
+    },
     changePassword: `<!doctype html>
     <html lang="en-US">
         <head>

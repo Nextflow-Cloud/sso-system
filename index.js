@@ -8,8 +8,14 @@ const Database = require("./classes/ExpressDB");
 const crypto = require('./classes/Crypto.js');
 const blacklist = require('./models/blacklist.js');
 const database = new Database(process.env.URI, process.env.DB);
+const ErrorHandler = require('./classes/ErrorHandler.js');
+const html = require('./html');
 database.on("connected", () => console.log("connected to database"));
 database.connect();
+html.initiate();
+
+new ErrorHandler(new Error('error.'));
+
 const forgotPasswords = require("./models/forgotPasswords");
 
 var whitelist = ['https://secure.nextflow.cloud', 'https://chat.nextflow.cloud', 'https://ss.nextflow.cloud', 'http://localhost:3001', 'https://test.nextflow.cloud'];
@@ -73,13 +79,13 @@ app.use(express.urlencoded({ extended: true }))
 app.use(cors());
 
 app.get('/change_password', async (req, res) => {
-    res.send(require("./html").changePassword);
+    res.send(html.changePassword);
 });
 
 app.get('/forgot/:code', async (req, res) => {
     let doc = await forgotPasswords.findOne({ idHash: await crypto.hashPasswordSalt(req.params.code, process.env.SALT) });
     if (doc) {
-        res.send(require("./html").forgot.replace(/{req.params.code}/g, req.params.code)); 
+        res.send(html.forgot.replace(/{req.params.code}/g, req.params.code)); 
     } else {
         res.sendStatus(401);
     }
