@@ -3,17 +3,17 @@
  * Copyright (c) 2022 Nextflow Technologies B.V. All rights reserved.
  * 
  */
+import crypto from "crypto";
+import fs from "fs";
 
-const crypto = require('crypto');
-const dotenv = require('dotenv');
+import bcrypt from "bcrypt";
+import dotenv from "dotenv";
 dotenv.config();
-const bcrypt = require('bcrypt');
 
 const KEY = Buffer.from(process.env.KEY, "base64");
 const SERVER_PRIVATE_KEY = process.env.PRIVATE;
 const SERVER_PUBLIC_KEY = process.env.PUBLICKEY;
 const IV = Buffer.from(process.env.IV, "base64");
-const fs = require('fs');
 
 /**
  * Crypto - a handler for cryptographic functions. Securely handles cryptographic functions of the server, such as the encryption and decryption of data
@@ -159,4 +159,4 @@ class Crypto {
     }
 }
 
-module.exports = Crypto;
+export default Crypto;

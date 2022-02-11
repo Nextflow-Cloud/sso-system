@@ -1,7 +1,6 @@
-const Database = require('./ExpressDB.js');
-const Crypto = require("./Crypto");
-const dec = require('tweetnacl-util').decodeBase64;
-const KEY = dec(process.env.KEY)
+import Database from "./ExpressDB.js";
+import Crypto from "./Crypto.js";
+const KEY = Buffer.from(process.env.KEY, "base64");
 
 /**
  * Store - a temporary container for data
@@ -77,4 +76,4 @@ class Store {
     }
 }
 
-module.exports = Store;
+export default Store;
