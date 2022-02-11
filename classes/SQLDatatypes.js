@@ -7,7 +7,7 @@
 /**
  * INTEGER - A SQL data type representation for Integers
  */
- class INTEGER extends Number {
+export class INTEGER extends Number {
     number;
     constructor(number) {
         if (number) {
@@ -22,7 +22,7 @@
 /**
  * INTEGER_AUTOINCREMENT - A SQL data type representation for Integers that auto increment
  */
-class INTEGER_AUTOINCREMENT extends Number {
+export class INTEGER_AUTOINCREMENT extends Number {
     number;
     constructor(number) {
         if (number) {
@@ -38,7 +38,7 @@ class INTEGER_AUTOINCREMENT extends Number {
  * TEXT - A SQL data type representation for a String in MYSQL
  */
 
-class TEXT extends String {
+export class TEXT extends String {
     text;
     constructor(text) {
         if (typeof text === 'string') {
@@ -54,7 +54,7 @@ class TEXT extends String {
  * LONGTEXT - A SQL data type representation for a String that is extremely long in MYSQL
  */
 
-class LONGTEXT extends String {
+export class LONGTEXT extends String {
     text;
     constructor(text) {
         if (typeof text === 'string') {
@@ -70,7 +70,7 @@ class LONGTEXT extends String {
  * VARCHAR - A SQL data type representation for a String in MYSQL using VARCHAR with a variable string limit
  */
 
-class VARCHAR extends String {
+export class VARCHAR extends String {
     text;
     length;
     constructor(length, text) {
@@ -95,7 +95,7 @@ class VARCHAR extends String {
 /**
  * SQLDataTypeError - Class that is thrown when there is an error with the SQL data type provided.
  */
-class SQLDataTypeError extends Error {
+export class SQLDataTypeError extends Error {
     message = '';
     name = '';
     constructor(message, name) {
@@ -107,13 +107,4 @@ class SQLDataTypeError extends Error {
         }
         this.message = message;
     }
-}
-
-module.exports = {
-    SQLDataTypeError,
-    VARCHAR,
-    LONGTEXT,
-    TEXT,
-    INTEGER_AUTOINCREMENT,
-    INTEGER
 }

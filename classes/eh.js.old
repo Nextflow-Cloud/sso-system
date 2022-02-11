@@ -1,0 +1,77 @@
+import Database from "./ExpressDB.js";
+import Crypto from "./Crypto.js";
+const KEY = Buffer.from(process.env.KEY, "base64");
+
+class ErrorHandler {
+    error;
+    code;
+    schema = new Database.Schema('error_codes', {
+        code: String,
+        name: String,
+        message: String,
+        stack: String,
+        stringified: String
+    });
+
+    constructor(error) {
+        if (!(error instanceof Error)) {
+            throw new Error('You must have a error in the constructor.');
+        }
+
+        this.error = error;
+        this.nameEncrypted = Crypto.encrypt(error.name, KEY);
+        this.messageEncrypted = Crypto.encrypt(error.message, KEY);
+        this.stackEncrypted = Crypto.encrypt(error.stack, KEY);
+        this.stringifiedEncrypted = Crypto.encrypt(error.toString(), KEY);
+    }
+
+    getId() {
+        // ok can you copy the existing errorhandler here
+        // dude I reverted my changes it shouldnt conflict
+        
+    }
+
+    async init() {
+
+    }
+}
+
+export default ErrorHandler;
+// let e = new ErrorHandler();
+// await e.init();
+// e.getId(0) 
+
+// wdym make the code more complicated
+// ONLY the init is async
+// just call the init at the top of the file
+// and you will be fine dude
+
+// it will always do that
+// so your solution
+// is to do the above
+
+/*
+IdTokenClient.prototype.handleError = function(error) {
+    if (error.response) {
+        if (error.response.status === 400) {
+        return this.handleErrorResponse(error.response);
+        } else if (error.response.status === 401) {
+        return this.handleErrorResponse(error.response);
+        } else if (error.response.status === 403) {
+        return this.handleErrorResponse(error.response);
+        } else if (error.response.status === 404) {
+        return this.handleErrorResponse(error.response);
+        } else if (error.response.status === 500) {
+        return this.handleErrorResponse(error.response);
+        } else if (error.response.status === 503) {
+        return this.handleErrorResponse(error.response);
+        } else {
+        return this.handleErrorResponse(error.response);
+        }
+    } else if (error.request) {
+        return this.handleErrorResponse(error.request);
+    } else {
+        return this.handleErrorResponse(error);
+    }
+};
+*/

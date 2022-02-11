@@ -1,6 +1,6 @@
-const { Schema } = require('../classes/ExpressDB');
+import Database from "../classes/ExpressDB.js";
 
-module.exports = new Schema('blacklist', {
+export default new Database.Schema("blacklist", {
     emailHash: String,
     tokenHash: String
 });
