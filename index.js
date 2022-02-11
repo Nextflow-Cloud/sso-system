@@ -81,4 +81,4 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'webpack/index.html'));
 });
 
-app.listen(3001, () => console.enhancedLog("Express", 'Ready! Listening on port 3001 🚀')); // 3000, 3005
+app.listen(3000, () => console.enhancedLog("Express", 'Ready! Listening on port 3000 🚀')); // 3000, 3005
