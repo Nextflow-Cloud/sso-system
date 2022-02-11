@@ -20,7 +20,7 @@ class Logger {
             stringifiedEncrypted: String,
             date: Date
         });
-        if (fs.existsSync("./logs")) fs.mkdirSync("./logs");
+        if (!fs.existsSync("./logs")) fs.mkdirSync("./logs");
         this.logStream = fs.createWriteStream(`./logs/log_${this.dateString(new Date())}.log`, { flags: "a" });
         this.console = console;
         global.console = this;
