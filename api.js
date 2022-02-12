@@ -79,15 +79,15 @@ app.post("/login", async (req, res) => {
             return res.status(403).send(easteregg[crypto.randomInt(easteregg.length)]);
         }
         var password = authorizedHeaders.password;
-        var user11 = await users.findOne({ emailHash: fetchedToken.emailHash }); 
-        var verify = await c.verifyPassword(password, user11.passwordHash);
+        var user = await users.findOne({ emailHash: fetchedToken.emailHash }); 
+        var verify = await c.verifyPassword(password, user.passwordHash);
         if (verify) {
             var userObj = {
-                id: c.decrypt(user11.idEncrypted, KEY),
-                username: c.decrypt(user11.usernameEncrypted, KEY, IV),
+                id: c.decrypt(user.idEncrypted, KEY),
+                username: c.decrypt(user.usernameEncrypted, KEY, IV),
                 email: fetchedToken.email
             };
-            if (c.decrypt(user11.twoFactorEncrypted, KEY, IV) == "true" && c.verify(user11.twoFactorEncrypted, user11.twoFactorSignature, SERVER_PUBLIC_KEY)) {
+            if (c.decrypt(user.twoFactorEncrypted, KEY, IV) == "true" && c.verify(user.twoFactorEncrypted, user.twoFactorSignature, SERVER_PUBLIC_KEY)) {
                 var token = await c.generateToken(fetchedToken.email);
                 await mfaStore.store(token, {
                     time: Date.now() + 1000 * 60 * 60,
@@ -101,7 +101,7 @@ app.post("/login", async (req, res) => {
             } else {
                 jwt.sign({ user: userObj }, process.env.KEY, (err, token) => {
                     if (err) {
-                        console.error("AHH THERE WAS AN ERROR IM DYING", err);
+                        console.enhancedError("Express.Login", err);
                         res.status(500).send("Oopsies our backend had some problems, please try again later");
                     }
 
@@ -125,23 +125,23 @@ app.post("/login", async (req, res) => {
         }
         var password = authorizedHeaders.password;
         var code = authorizedHeaders.code;
-        var user11 = await users.findOne({ emailHash: fetchedToken.emailHash });
+        var user = await users.findOne({ emailHash: fetchedToken.emailHash });
         var verify = false;
-        if (user11) verify = await c.verifyPassword(password, user11.passwordHash);
-        if (verify && (c.decrypt(user11.twoFactorEncrypted, KEY, IV) == "true" && 
-            c.verify(user11.twoFactorEncrypted, user11.twoFactorSignature, SERVER_PUBLIC_KEY)) && 
-            (c.decrypt(user11.twoFactorCodeEncrypted, KEY, IV) !== "" && 
-            c.verify(user11.twoFactorCodeEncrypted, user11.twoFactorCodeSignature, SERVER_PUBLIC_KEY))) {
-            var token = n2fa.verifyToken(c.decrypt(user11.twoFactorCodeEncrypted, KEY, IV), code);
+        if (user) verify = await c.verifyPassword(password, user.passwordHash);
+        if (verify && (c.decrypt(user.twoFactorEncrypted, KEY, IV) == "true" && 
+            c.verify(user.twoFactorEncrypted, user.twoFactorSignature, SERVER_PUBLIC_KEY)) && 
+            (c.decrypt(user.twoFactorCodeEncrypted, KEY, IV) !== "" && 
+            c.verify(user.twoFactorCodeEncrypted, user.twoFactorCodeSignature, SERVER_PUBLIC_KEY))) {
+            var token = n2fa.verifyToken(c.decrypt(user.twoFactorCodeEncrypted, KEY, IV), code);
             if (token) {
                 var userObj = {
-                    id: c.decrypt(user11.idEncrypted, KEY),
-                    username: c.decrypt(user11.usernameEncrypted, KEY, IV),
+                    id: c.decrypt(user.idEncrypted, KEY),
+                    username: c.decrypt(user.usernameEncrypted, KEY, IV),
                     email: fetchedToken.email.toString()
                 };
                 jwt.sign({ user: userObj }, process.env.KEY, (err, token) => {
                     if (err) {
-                        console.error("AHH THERE WAS AN ERROR IM DYING", err);
+                        console.enhancedError("Express.Login", err);
                         res.status(500).send("Oopsies our backend had some problems, please try again later");
                     }
                     res.cookie("token", token, { domain: ".nextflow.cloud", secure: true, expires: new Date(9676800000000) });
@@ -150,18 +150,18 @@ app.post("/login", async (req, res) => {
                     });
                 });
             } else {
-                if (user11.twoFactorBackupCodesHashed.findIndex(r => c.verifyPassword(code, r) === true) !== -1) {
-                    let index = user11.twoFactorBackupCodesHashed.findIndex(r => c.verifyPassword(code, r) === true);
-                    let authenticatedCode = user11.twoFactorBackupCodesHashed[index];
-                    if (c.verify(authenticatedCode, user11.twoFactorBackupCodesSignature[index], SERVER_PUBLIC_KEY)) {
+                if (user.twoFactorBackupCodesHashed.findIndex(r => c.verifyPassword(code, r) === true) !== -1) {
+                    let index = user.twoFactorBackupCodesHashed.findIndex(r => c.verifyPassword(code, r) === true);
+                    let authenticatedCode = user.twoFactorBackupCodesHashed[index];
+                    if (c.verify(authenticatedCode, user.twoFactorBackupCodesSignature[index], SERVER_PUBLIC_KEY)) {
                         var userObj = {
-                            id: c.decrypt(user11.idEncrypted, KEY),
-                            username: c.decrypt(user11.usernameEncrypted, KEY, IV),
+                            id: c.decrypt(user.idEncrypted, KEY),
+                            username: c.decrypt(user.usernameEncrypted, KEY, IV),
                             email: fetchedToken.email.toString()
                         };
                         jwt.sign({ user: userObj }, process.env.KEY, (err, token) => {
                             if (err) {
-                                console.error("AHH THERE WAS AN ERROR IM DYING", err);
+                                console.enhancedError("Express.Login", err);
                                 res.status(500).send("Oopsies our backend had some problems, please try again later");
                             }
                             res.cookie("token", token, { domain: ".nextflow.cloud", secure: true, expires: new Date(9676800000000) });
@@ -215,7 +215,7 @@ app.patch("/user/avatar", verifyAuthToken, upload.single("avatar"), async (req, 
         upload.single("avatar")(req, res, async (err) => {
             if (err) return res.status(413).send("Invalid file.");
             jwt.verify(req.token, process.env.KEY, async (error, result) => {
-                if (error) return console.error(error);
+                if (error) return console.enhancedError("Express.User.Avatar", error);
                 let emailHash = await c.hashPasswordSalt(req.email, process.env.SALT);
                 let idHash = await c.hashPasswordSalt(result.user.id, process.env.SALT);
                 let fileType = path.extname(file.originalname).split(".")[1];
@@ -237,7 +237,7 @@ app.patch("/user/avatar", verifyAuthToken, upload.single("avatar"), async (req, 
                                 res.send("Success!");
                             });
                         });
-                    }).catch((e) => res.status(500).send("Server error"));
+                    }).catch(() => res.status(500).send("Server error"));
                 }
             });
         });
@@ -246,7 +246,7 @@ app.patch("/user/avatar", verifyAuthToken, upload.single("avatar"), async (req, 
     upload.single("avatar")(req, res, async (err) => {
         if (err) return res.status(413).send("Invalid file.");
         jwt.verify(req.token, process.env.KEY, async (error, result) => {
-            if (error) return console.error(error);
+            if (error) return console.enhancedError("Express.User.Avatar", error);
             let emailHash = await c.hashPasswordSalt(req.email, process.env.SALT);
             let idHash = await c.hashPasswordSalt(result.user.id, process.env.SALT);
             await avatars.create({
@@ -260,10 +260,9 @@ app.patch("/user/avatar", verifyAuthToken, upload.single("avatar"), async (req, 
             await avatars.findOneAndDelete({ emailHash });
             return fs.unlink(path.join(__dirname, "/avatars", doc.fileName), err => {
                 if (err) {
-                    console.error(err);
+                    console.enhancedError("Express.User.Avatar", err);
                     return res.status(500).send("Error!");
                 }
-                return 2;
             });
         });
     });
@@ -275,7 +274,7 @@ app.post("/user/avatar", verifyAuthToken, upload.single("avatar"), async (req, r
     if (doc) {
         return fs.unlink(path.join(__dirname, file.path), err => {
             if (err) {
-                console.error(err);
+                console.enhancedError("Express.User.Avatar", err);
                 return res.status(500).send("Error!");
             } else {
                 return res.status(400).send("You can't create a profile picture if you already have one.");
@@ -285,7 +284,7 @@ app.post("/user/avatar", verifyAuthToken, upload.single("avatar"), async (req, r
     upload.single("avatar")(req, res, async err => {
         if (err) return res.status(413).send("Invalid file.");
         jwt.verify(req.token, process.env.KEY, async (error, result) => {
-            if (error) return console.error(error);
+            if (error) return console.enhancedError("Express.User.Avatar", error);
             let emailHash = await c.hashPasswordSalt(req.email, process.env.SALT);
             let idHash = await c.hashPasswordSalt(result.user.id, process.env.SALT);
             let fileType = path.extname(file.originalname).split(".")[1];
@@ -348,8 +347,10 @@ app.delete("/user/avatar", verifyAuthToken, async (req, res) => {
     let doc = await avatars.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
     if (doc) {
         fs.unlink(path.join(__dirname, "/avatars", doc.fileName), async (err) => {
-            if (err) { console.error(err); res.status(500).send("Server side error.") }
-            else {
+            if (err) { 
+                console.enhancedError("Express.User.Avatar", err); 
+                res.status(500).send("Server side error.");
+            } else {
                 await avatars.findOneAndDelete({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
                 res.send("Deleted avatar!");
             }
@@ -525,7 +526,7 @@ app.post("/forgot/password", async (req, res) => {
         const sender = await createTransport();
         sender.sendMail(message, async (err, info) => {
             if (err) {
-                console.log(err);
+                console.enhancedError("Express.Forgot.Password", err);
             }
         });
         res.status(200).send("Sent forget password to that email, if it exists!");
@@ -706,21 +707,9 @@ app.patch("/user/mfa/toggle", verifyAuthToken, async (req, res) => {
                     for (let i = 0; i < 6; i++) {
                         codes.push(c.generateBackupCodes());
                     }
-                    let codesHashed = [];
-                    for (let i = 0; i < 6; i++) {
-                        let hashed = await c.hashPassword(codes[i]);
-                        codesHashed.push(hashed);
-                    }
-                    let codesEncrypted = [];
-                    for (let i = 0; i < 6; i++) {
-                        let hashed = c.encrypt(codes[i], KEY);
-                        codesEncrypted.push(hashed);
-                    }
-                    let codesSigned = [];
-                    for (let i = 0; i < 6; i++) {
-                        let hashed = c.sign(codesHashed[i], SERVER_PRIVATE_KEY);
-                        codesSigned.push(hashed);
-                    }
+                    var codesHashed = await Promise.all(codes.map(code => c.hashPassword(code)));
+                    var codesEncrypted = codesHashed.map(code => c.encrypt(code, KEY));
+                    var codesSigned = codesHashed.map(code => c.sign(code, SERVER_PRIVATE_KEY));
                     await users.findOneAndUpdate({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) }, {
                         twoFactorSignature: valSigned,
                         twoFactorEncrypted: val,
@@ -747,7 +736,7 @@ app.patch("/user/mfa/toggle", verifyAuthToken, async (req, res) => {
 
 app.post("/validate", (req, res) => {
     var token = req.body.token;
-    jwt.verify(token, process.env.KEY, (err, authData) => {
+    jwt.verify(token, process.env.KEY, err => {
         if (err) return res.sendStatus(401);
         else return res.sendStatus(200);
     });
