@@ -35,7 +35,7 @@ sh ./get-docker.sh
 #### Run our docker build script
 
 ```shell
-./build.sh
+sudo ./build.sh
 ```
 
 * Enjoy the service at last :)
