@@ -109,6 +109,7 @@ webpack/
 
 # Node package lock file
 package-lock.json
+yarn.lock
 
 # Uploaded avatars
 avatars/
