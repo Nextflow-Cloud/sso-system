@@ -13,7 +13,7 @@ import { EventEmitter } from "events";
 
 class Database extends EventEmitter {
     uri;
-    connected;// dude you said sql even though it had nothing to do with this
+    connected;
     models;
     database;
     client;
@@ -124,7 +124,7 @@ class Schema {
     async deleteOne(query) {
         if (!this.client) this.client = Database.globalClient;
         if (!this.client) throw new Error('No database connection');
-        return await this.client.collection(this.collection).deleteOne(query); // promis is right here
+        return await this.client.collection(this.collection).deleteOne(query);
     }
     async deleteMany(query) {
         if (!this.client) this.client = Database.globalClient;
