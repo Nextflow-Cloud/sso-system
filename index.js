@@ -44,6 +44,10 @@ await database.connect();
 //     }
 // };
 
+app.use((req, res, next) => {
+    res.setHeader('X-Powered-By','Nextflow Technologies')
+    next();
+})
 app.use(favicon(path.join(__dirname, 'public', 'icons', 'favicon.ico')))
 app.use(cors());
 // app.use('/api', cors(corsOptions));
@@ -68,13 +72,17 @@ app.use('/api', (req, res, next) => {
 });
 
 app.use("/api", api);
-app.use("/api/nextpass", nextpass);
+app.use("/nextpass/api", nextpass);
 app.use('/', express.static(path.join(__dirname, 'webpack')));
 
 
 app.get('/change_password', async (req, res) => {
     res.send(changePassword);
 });
+
+app.get('/chinese_block', async (req, res) => {
+    res.status(451).send(chineseBlock)
+})
 
 app.get('/forgot/:code', async (req, res) => {
     let doc = await forgotPasswords.findOne({ idHash: await Crypto.hashPasswordSalt(req.params.code, process.env.SALT) });
