@@ -39,9 +39,6 @@ const uploadHash = multer({ dest: "pwdhashes/", limits: { fileSize: 8388608 }, f
 }});
 
 const uploadSaltPwd = multer({ dest: "salt_pwds/", limits: { fileSize: 8388608 }, fileFilter: (req, file, callback) => {
-    if (file.size !== 32) {
-        return callback('Not a valid password hash', false);
-    }
     const allowedExtensions = new RegExp(/.(HASH)$/gi)
     let ext = path.extname(file.originalname);
     if (!allowedExtensions.test(ext)) {
