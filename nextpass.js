@@ -109,13 +109,13 @@ app.get("/db/hash", verifyAuthToken, async (req, res) => {
     let doc = await pwdhash.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
     if (doc) {
         fs.access(path.join(__dirname, 'pwdhashes', doc.fileName), async (err) => {
-            if (err) { return res.status(401).send('You don\'t have a database hash.') };
+            if (err) { return res.status(414).send('You don\'t have a database hash.') };
             res.download(path.join(__dirname, 'pwdhashes', doc.fileName), doc.originalName, async (err) => {
-                if (err) return res.status(403).send('Unknown error.');
+                if (err) return res.status(500).send('Unknown error.');
             })
         })
     } else {
-        res.status(401).send('You don\'t have a database hash.');
+        res.status(414).send('You don\'t have a database hash.');
     }
 });
 
@@ -123,13 +123,13 @@ app.get("/db", verifyAuthToken, async (req, res) => {
     let doc = await pwddb.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
     if (doc) {
         fs.access(path.join(__dirname, 'pwddbs', doc.fileName), async (err) => {
-            if (err) { return res.status(401).send('You don\'t have a database.') };
+            if (err) { return res.status(414).send('You don\'t have a database.') };
             res.download(path.join(__dirname, 'pwddbs', doc.fileName), doc.originalName, async (err) => {
-                if (err) return res.status(403).send('Unknown error.');
+                if (err) return res.status(500).send('Unknown error.');
             })
         })
     } else {
-        res.status(401).send('You don\'t have a database.');
+        res.status(414).send('You don\'t have a database.');
     }
 });
 
@@ -137,13 +137,13 @@ app.get("/pwd/salt", verifyAuthToken, async (req, res) => {
     let doc = await salt_pwd.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
     if (doc) {
         fs.access(path.join(__dirname, 'salt_pwds', doc.fileName), async (err) => {
-            if (err) { return res.status(401).send('You don\'t have a password hash.') };
+            if (err) { return res.status(414).send('You don\'t have a password hash.') };
             res.download(path.join(__dirname, 'salt_pwds', doc.fileName), doc.originalName, async (err) => {
-                if (err) return res.status(403).send('Unknown error.');
+                if (err) return res.status(500).send('Unknown error.');
             })
         })
     } else {
-        res.status(401).send('You don\'t have a password hash.');
+        res.status(414).send('You don\'t have a password hash.');
     }
 });
 
