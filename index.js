@@ -71,8 +71,8 @@ app.use('/api', (req, res, next) => {
     }
 });
 
+app.use("/api/nextpass", nextpass);
 app.use("/api", api);
-app.use("/nextpass/api", nextpass);
 app.use('/', express.static(path.join(__dirname, 'webpack')));
 
 
