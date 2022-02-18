@@ -118,6 +118,7 @@ avatars/
 # Encrypted password databases
 pwddbs/
 pwdhashes/
+salt_pwds
 
 # Tests
 tests/

@@ -6,6 +6,7 @@ import multer from "multer";
 
 import pwddb from './models/pwddb.js';
 import pwdhash from "./models/pwdhash.js";
+import salt_pwd from "./models/salt_pwd.js";
 
 import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
@@ -32,7 +33,19 @@ const uploadHash = multer({ dest: "pwdhashes/", limits: { fileSize: 8388608 }, f
     const allowedExtensions = new RegExp(/.(DBHASH)$/gi)
     let ext = path.extname(file.originalname);
     if (!allowedExtensions.test(ext)) {
-        return callback("Only databases are allowed.", false);
+        return callback("Only database hashes are allowed.", false);
+    }
+    callback(null, true);
+}});
+
+const uploadSaltPwd = multer({ dest: "salt_pwds/", limits: { fileSize: 8388608 }, fileFilter: (req, file, callback) => {
+    if (file.size !== 32) {
+        return callback('Not a valid password hash', false);
+    }
+    const allowedExtensions = new RegExp(/.(HASH)$/gi)
+    let ext = path.extname(file.originalname);
+    if (!allowedExtensions.test(ext)) {
+        return callback("Only password hashes are allowed.", false);
     }
     callback(null, true);
 }});
@@ -75,6 +88,23 @@ app.delete('/db', verifyAuthToken, async (req, res) => {
     }
 })
 
+app.delete('/db', verifyAuthToken, async (req, res) => {
+    let doc = await salt_pwd.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
+    if (doc) {
+        fs.access(path.join(__dirname, 'salt_pwds', doc.fileName), async (err) => {
+            if (err) { return res.status(401).send('You don\'t have a password hash.') };
+            fs.unlink(path.join(__dirname, 'salt_pwds', doc.fileName), async (err) => {
+                if (err) { return res.status(500).send('Unknown server error.') };
+                salt_pwd.findOneAndDelete({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) }).then(() => {
+                    res.send('Sucess, password hash deleted.')
+                }).catch(e => { console.error(e); return res.status(500).send('Unknown server error.') });
+            })
+        })
+    } else {
+        res.status(401).send('You don\'t have a password hash.');
+    }
+})
+
 app.get("/db/hash", verifyAuthToken, async (req, res) => {
     let doc = await pwdhash.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
     if (doc) {
@@ -100,6 +130,20 @@ app.get("/db", verifyAuthToken, async (req, res) => {
         })
     } else {
         res.status(401).send('You don\'t have a database.');
+    }
+});
+
+app.get("/pwd/salt", verifyAuthToken, async (req, res) => {
+    let doc = await salt_pwd.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
+    if (doc) {
+        fs.access(path.join(__dirname, 'salt_pwds', doc.fileName), async (err) => {
+            if (err) { return res.status(401).send('You don\'t have a password hash.') };
+            res.download(path.join(__dirname, 'salt_pwds', doc.fileName), doc.originalName, async (err) => {
+                if (err) return res.status(403).send('Unknown error.');
+            })
+        })
+    } else {
+        res.status(401).send('You don\'t have a password hash.');
     }
 });
 
@@ -153,6 +197,36 @@ app.patch("/db", verifyAuthToken, upload.single('pwd'), async (req, res) => {
         } else {
             let emailHash = await c.hashPasswordSalt(req.email, process.env.SALT);
             await pwddb.create({
+                emailHash,
+                fileName: file.filename,
+                fileType: path.extname(file.originalname).split(".")[1],
+                originalName: file.originalname
+            });
+            res.send('Sucess!');
+        }
+    });
+});
+
+app.patch("/pwd/salt", verifyAuthToken, uploadSaltPwd.single('hash'), async (req, res) => {
+    let doc = await salt_pwd.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
+    let file = req.file;
+    uploadSaltPwd.single('hash')(req, res, async (err) => {
+        if (err) return res.status(413).send("Invalid file.");
+        if (doc) {
+            fs.unlink(path.join(__dirname, 'salt_pwds', doc.fileName), async (error) => {
+                if (err) { console.error(error); return res.status(502).send('Server side error.') };
+                let emailHash = await c.hashPasswordSalt(req.email, process.env.SALT);
+                await salt_pwd.create({
+                    emailHash,
+                    fileName: file.filename,
+                    fileType: path.extname(file.originalname).split(".")[1],
+                    originalName: file.originalname
+                });
+                res.send('Sucess!');
+            })
+        } else {
+            let emailHash = await c.hashPasswordSalt(req.email, process.env.SALT);
+            await salt_pwd.create({
                 emailHash,
                 fileName: file.filename,
                 fileType: path.extname(file.originalname).split(".")[1],
