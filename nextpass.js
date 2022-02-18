@@ -85,7 +85,7 @@ app.delete('/db', verifyAuthToken, async (req, res) => {
     }
 })
 
-app.delete('/db', verifyAuthToken, async (req, res) => {
+app.delete('/pwd_hashes', verifyAuthToken, async (req, res) => {
     let doc = await salt_pwd.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
     if (doc) {
         fs.access(path.join(__dirname, 'salt_pwds', doc.fileName), async (err) => {
