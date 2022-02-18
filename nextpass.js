@@ -22,7 +22,7 @@ import { verifyAuthToken } from "./functions.js";
 const upload = multer({ dest: "pwddbs/", limits: { fileSize: 8388608 }, fileFilter: (req, file, callback) => {
     const allowedExtensions = new RegExp(/.(db)$/gi)
     let ext = path.extname(file.originalname);
-    req.cookies()
+    // req.cookies()
     if (!allowedExtensions.test(ext)) {
         return callback("Only databases are allowed.", false);
     }
