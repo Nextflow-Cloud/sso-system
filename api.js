@@ -963,7 +963,7 @@ app.post("/logout", verifyAuthToken, async (req, res) => {
     res.status(200).send("Logged out!");
 });
 
-app.all('/api/easter-egg', (req, res) => {
+app.all('/easter-egg', (req, res) => {
     res.status(418).send('I\'m a teapot. Tip me over and pour me out.')
 })
 
