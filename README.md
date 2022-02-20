@@ -10,7 +10,7 @@ This is the Express-based backend. For the React-based frontend, please check ou
 
 ### Setup without Docker
 This service uses MongoDB for its backend management, so you will need a MongoDB cluster or self hosted MongoDB server both of which for the pricing, and downloads page respectively can be found at [MongoDB's Website](https://www.mongodb.com/)
-* Get a working MongoDB cluster or MongoDB self-hosted server
+* Obtain a working MongoDB cluster or MongoDB self-hosted server
 * Go in a terminal and run node index.js or npm start
 * Enjoy the service
 
@@ -30,9 +30,9 @@ curl -fsSL https://get.docker.com -o get-docker.sh
 sh ./get-docker.sh
 ```
 
-#### Get a working instance of a MongoDB cluster or get a MongoDB self-hosted server
+#### Obtain a working instance of a MongoDB cluster or get a MongoDB self-hosted server
 
-#### Run our docker build script
+#### Run our Docker build script
 
 ```shell
 sudo ./build.sh
@@ -43,3 +43,7 @@ sudo ./build.sh
 
 ### Contribute
 Nextflow Cloud Technologies is committed to open-source software and free use. This means that you are free to view, modify, contribute, and support the project. Making a pull request with something useful is highly encouraged as this project is made possible by contributors like you who support the project.
+
+* prod: Most stable branch -- used in production [here](https://secure.nextflow.cloud). 
+* main: Beta/release preview -- mostly stable and likely will be pushed to production with a couple fixes.
+* dev: Active development -- expect a variety of unstable and/or unfinished features and fixes.
