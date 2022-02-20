@@ -1,6 +1,6 @@
 {
   "name": "sso-system",
-  "version": "0.6.2217",
+  "version": "0.7.2201-dev",
   "description": "API backend server for the Nextflow secure single sign on service",
   "main": "index.js",
   "type": "module",
