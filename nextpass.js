@@ -28,7 +28,7 @@ const upload = multer({ dest: "pwdDbs/", limits: { fileSize: 8388608 }, fileFilt
 }});
 
 const uploadHash = multer({ dest: "pwdHashes/", limits: { fileSize: 8388608 }, fileFilter: (req, file, callback) => {
-    const allowedExtensions = new RegExp(/.(DBHASH)$/gi)
+    const allowedExtensions = new RegExp(/.(DBHASH)$/gi);
     let ext = path.extname(file.originalname);
     if (!allowedExtensions.test(ext)) {
         return callback("Only database hashes are allowed.", false);
@@ -37,7 +37,7 @@ const uploadHash = multer({ dest: "pwdHashes/", limits: { fileSize: 8388608 }, f
 }});
 
 const uploadSaltPwd = multer({ dest: "pwdSalts/", limits: { fileSize: 8388608 }, fileFilter: (req, file, callback) => {
-    const allowedExtensions = new RegExp(/.(HASH)$/gi)
+    const allowedExtensions = new RegExp(/.(HASH)$/gi);
     let ext = path.extname(file.originalname);
     if (!allowedExtensions.test(ext)) {
         return callback("Only password hashes are allowed.", false);
@@ -60,7 +60,7 @@ app.delete("/db/hash", verifyAuthToken, async (req, res) => {
                     res.send("Success, database hash deleted.");
                 }).catch(e => { 
                     console.error(e); 
-                    res.status(500).send("Unknown server error.") 
+                    res.status(500).send("Unknown server error.") ;
                 });
             })
         })
@@ -77,7 +77,7 @@ app.delete("/db", verifyAuthToken, async (req, res) => {
             fs.unlink(path.join(__dirname, "pwdDbs", doc.fileName), async (err) => {
                 if (err) return res.status(500).send("Unknown server error.");
                 pwdDbs.findOneAndDelete({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) }).then(() => {
-                    res.send("Sucess, database deleted.")
+                    res.send("Sucess, database deleted.");
                 }).catch(e => { console.error(e); return res.status(500).send("Unknown server error.") });
             })
         })
@@ -94,7 +94,7 @@ app.delete("/pwd/salt", verifyAuthToken, async (req, res) => {
             fs.unlink(path.join(__dirname, "pwdSalts", doc.fileName), async (err) => {
                 if (err) return res.status(500).send("Unknown server error.");
                 pwdSalts.findOneAndDelete({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) }).then(() => {
-                    res.send("Sucess, password hash deleted.")
+                    res.send("Sucess, password hash deleted.");
                 }).catch(e => { console.error(e); return res.status(500).send("Unknown server error.") });
             })
         })
@@ -110,8 +110,8 @@ app.get("/db/hash", verifyAuthToken, async (req, res) => {
             if (err) return res.status(414).send("You don't have a database hash.");
             res.download(path.join(__dirname, "pwdHashes", doc.fileName), doc.originalName, async (err) => {
                 if (err) return res.status(500).send("Unknown error.");
-            })
-        })
+            });
+        });
     } else {
         res.status(414).send("You don't have a database hash.");
     }
@@ -124,8 +124,8 @@ app.get("/db", verifyAuthToken, async (req, res) => {
             if (err) return res.status(414).send("You don't have a database.");
             res.download(path.join(__dirname, "pwdDbs", doc.fileName), doc.originalName, async (err) => {
                 if (err) return res.status(500).send("Unknown error.");
-            })
-        })
+            });
+        });
     } else {
         res.status(414).send("You don't have a database.");
     }
@@ -138,8 +138,8 @@ app.get("/pwd/salt", verifyAuthToken, async (req, res) => {
             if (err) return res.status(414).send("You don't have a password hash.");
             res.download(path.join(__dirname, "pwdSalts", doc.fileName), doc.originalName, async (err) => {
                 if (err) return res.status(500).send("Unknown error.");
-            })
-        })
+            });
+        });
     } else {
         res.status(414).send("You don't have a password hash.");
     }
@@ -161,7 +161,7 @@ app.patch("/db/hash", verifyAuthToken, uploadHash.single("pwdHashes"), async (re
                     originalName: file.originalname
                 });
                 res.send("Sucess!");
-            })
+            });
         } else {
             let emailHash = await c.hashPasswordSalt(req.email, process.env.SALT);
             await pwdHashes.create({
@@ -194,7 +194,7 @@ app.patch("/db", verifyAuthToken, upload.single("pwd"), async (req, res) => {
                     originalName: file.originalname
                 });
                 res.send("Success!");
-            })
+            });
         } else {
             let emailHash = await c.hashPasswordSalt(req.email, process.env.SALT);
             await pwdDbs.create({
@@ -227,7 +227,7 @@ app.patch("/pwd/salt", verifyAuthToken, uploadSaltPwd.single("hash"), async (req
                     originalName: file.originalname
                 });
                 res.send("Success!");
-            })
+            });
         } else {
             let emailHash = await c.hashPasswordSalt(req.email, process.env.SALT);
             await pwdSalts.create({
