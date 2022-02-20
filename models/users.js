@@ -1,6 +1,6 @@
 import Database from "../classes/ExpressDB.js";
 
-export default new Database.Schema("logins", {
+export default new Database.Schema("users", {
     idHash: String,
     idEncrypted: String,
     usernameHash: String,

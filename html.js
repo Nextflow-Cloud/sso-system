@@ -1,4 +1,4 @@
-export const chineseBlock = `
+export const legalBlock = `
 <!doctype html>
 <html lang="en-US">
     <head>

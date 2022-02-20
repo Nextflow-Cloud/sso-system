@@ -323,7 +323,7 @@ app.get("/user/:id/avatar", async (req, res) => {
             res.sendFile(path.join(__dirname, "/avatars", doc.fileName));
         });
     } else {
-        res.sendFile(path.join(__dirname, "default.jpg"));
+        res.sendFile(path.join(__dirname, "assets/default.jpg"));
     }
 });
 
@@ -338,7 +338,7 @@ app.get("/user/avatar", verifyAuthToken, async (req, res) => {
                 res.sendFile(path.join(__dirname, "/avatars", doc.fileName));
             })
         } else {
-            res.sendFile(path.join(__dirname, "default.jpg"));
+            res.sendFile(path.join(__dirname, "assets/default.jpg"));
         }
     });
 });
@@ -963,12 +963,12 @@ app.post("/logout", verifyAuthToken, async (req, res) => {
     res.status(200).send("Logged out!");
 });
 
-app.all('/easter-egg', (req, res) => {
-    res.status(418).send('I\'m a teapot. Tip me over and pour me out.')
-})
+app.all("/easter-egg", (req, res) => {
+    res.status(418).send("I'm a teapot. Tip me over and pour me out.");
+});
 
 app.all("/*", (req, res) => {
-    res.status(404).send("Could not find the page, requested on the API.");
+    res.status(404).send("Invalid API route, please check your request.");
 });
 
 export default app;
