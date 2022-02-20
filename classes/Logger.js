@@ -38,7 +38,7 @@ class Logger {
         this.logStream.write(logString + "\n");
     }
     error(error) {
-        if (!(error instanceof Error)) throw new LoggerError("You must have a error in the constructor.");
+        if (!(error instanceof Error)) { this.console.error(error); return/*throw new LoggerError("You must have a error in the constructor.")*/ };
         // if (!this.databaseErrors.database.connected) {
             // this.enhancedWarn("Logger", 'Database is not connected.'); 
         // }

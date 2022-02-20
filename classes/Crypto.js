@@ -5,6 +5,7 @@
  */
 import crypto from "crypto";
 import fs from "fs";
+import path from "path";
 
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
@@ -86,23 +87,36 @@ class Crypto {
         ciphered += cipher.final('utf-8');
         return ciphered;
     } 
-    static async encryptFile(filename) {
-        const cipher = crypto.createCipheriv('aes-256-cbc', KEY, IV);
+    static async encryptFile(filename, key) {
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
         const input = fs.createReadStream(`${filename}`);
         const output = fs.createWriteStream(`${filename}.encrypted`);
+        output.write(iv);
         input.pipe(cipher).pipe(output);
-        fs.unlink(`${filename}`, (err) => {
-            if (err) {
-                console.error(err);
-            }
-        });
+        input.on('end', () => {
+            fs.unlink(`${filename}`, (err) => {
+                if (err) {
+                    console.error(err);
+                }
+            });
+        })
         return 0;
     }
-    static async decryptFile(filename) { 
-        const cipher = crypto.createDecipheriv('aes-256-cbc', KEY, IV);
-        const input = fs.createReadStream(`${filename}.encrypted`);
-        const output = fs.createWriteStream(`${filename}`);
-        input.pipe(cipher).pipe(output);
+    static async decryptFile(filename, key) {
+        const input = fs.createReadStream(`${filename}.encrypted`, { highWaterMark: 16 });
+        input.once('data', (chunk) => {
+            const cipher = crypto.createDecipheriv('aes-256-cbc', key, chunk);
+            const output = fs.createWriteStream(`${filename}`);
+            input.pipe(cipher).pipe(output);
+        })
+        input.on('end', () => {
+            fs.unlink(`${filename}.encrypted`, (err) => {
+                if (err) {
+                    console.error(err);
+                }
+            });
+        })
         return 0;
     }
 

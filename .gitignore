@@ -106,9 +106,22 @@ dist
 
 # Compiled React webpack files
 webpack/
+webpack1/
 
 # Node package lock file
 package-lock.json
+yarn.lock
 
 # Uploaded avatars
 avatars/
+
+# Encrypted password databases
+pwddbs/
+pwdhashes/
+salt_pwds
+
+# Tests
+tests/
+
+#C stuff
+c/

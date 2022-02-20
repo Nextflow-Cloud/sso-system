@@ -1,6 +1,7 @@
 import express from "express";
 const app = express();
 
+import favicon from "serve-favicon";
 import cors from "cors";
 import { rateLimit } from "express-rate-limit";
 
@@ -21,7 +22,8 @@ import forgotPasswords from "./models/forgotPasswords.js";
 import api from "./api.js";
 import nextpass from "./nextpass.js";
 
-import { changePassword, forgot } from "./html.js";
+import { changePassword, forgot, chineseBlock } from "./html.js";
+import geoip from "geoip-lite";
 
 const database = new Database(process.env.URI, process.env.DB);
 database.on("connected", () => {
@@ -42,6 +44,11 @@ await database.connect();
 //     }
 // };
 
+app.use((req, res, next) => {
+    res.setHeader('X-Powered-By','Nextflow Technologies')
+    next();
+})
+app.use(favicon(path.join(__dirname, 'public', 'icons', 'favicon.ico')))
 app.use(cors());
 // app.use('/api', cors(corsOptions));
 app.use('/api', rateLimit({
@@ -54,19 +61,28 @@ app.use('/api', rateLimit({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/api", api);
+app.use('/api', (req, res, next) => {
+    var ip = (req.headers["x-forwarded-for"] || "").split(",").pop().trim() || req.socket.remoteAddress;
+    if (geoip.lookup(ip).country == 'CN') {
+        app.set('title', 'Blocked due to legal restrictions')
+        res.status(451).send(chineseBlock)
+    } else {
+        next()
+    }
+});
+
 app.use("/api/nextpass", nextpass);
+app.use("/api", api);
 app.use('/', express.static(path.join(__dirname, 'webpack')));
 
-// app.use('/api', (req, res, next) => {
-//    res.status(451).send('<h1>451</h1><h2>Unavailable for legal reasons</h2><h2>由于法律原因不可用</h2><div><p><b>What does this mean?</b></p><p>Nextflow services are unavailable in China. If you reside in China, you cannot access this service due to legal restrictions. If you are not in China, please contact us.</p></div><div><p><b>这是什么意思？</b></p><p>Nextflow服务在中国不可用。如果您居住在中国，由于法律限制，您将无法访问此服务。如果您不在中国，请与我们联系。</p></div>');
-//    res.send("yo @queryzi");
-//    next(req, res)
-// });
 
 app.get('/change_password', async (req, res) => {
     res.send(changePassword);
 });
+
+app.get('/chinese_block', async (req, res) => {
+    res.status(451).send(chineseBlock)
+})
 
 app.get('/forgot/:code', async (req, res) => {
     let doc = await forgotPasswords.findOne({ idHash: await Crypto.hashPasswordSalt(req.params.code, process.env.SALT) });
