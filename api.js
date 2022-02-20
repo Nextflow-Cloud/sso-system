@@ -323,7 +323,7 @@ app.get("/user/:id/avatar", async (req, res) => {
             res.sendFile(path.join(__dirname, "/avatars", doc.fileName));
         });
     } else {
-        res.sendFile(path.join(__dirname, "default.jpg"));
+        res.sendFile(path.join(__dirname, "assets/default.jpg"));
     }
 });
 
@@ -338,7 +338,7 @@ app.get("/user/avatar", verifyAuthToken, async (req, res) => {
                 res.sendFile(path.join(__dirname, "/avatars", doc.fileName));
             })
         } else {
-            res.sendFile(path.join(__dirname, "default.jpg"));
+            res.sendFile(path.join(__dirname, "assets/default.jpg"));
         }
     });
 });
