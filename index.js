@@ -22,7 +22,7 @@ import forgotPasswords from "./models/forgotPasswords.js";
 import api from "./api.js";
 import nextpass from "./nextpass.js";
 
-import { changePassword, forgot, legalBlock } from "./html.js";
+import { forgot, legalBlock } from "./html.js";
 import geoip from "geoip-lite";
 
 const database = new Database(process.env.URI, process.env.DB);
@@ -74,10 +74,6 @@ app.use("/api", (req, res, next) => {
 app.use("/api/nextpass", nextpass);
 app.use("/api", api);
 app.use("/", express.static(path.join(__dirname, "webpack")));
-
-app.get("/change_password", async (req, res) => {
-    res.send(changePassword);
-});
 
 app.get("/forgot/:code", async (req, res) => {
     let doc = await forgotPasswords.findOne({ idHash: await Crypto.hashPasswordSalt(req.params.code, process.env.SALT) });
