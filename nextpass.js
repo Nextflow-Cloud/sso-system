@@ -45,10 +45,6 @@ const uploadSaltPwd = multer({ dest: "pwdSalts/", limits: { fileSize: 8388608 },
     callback(null, true);
 }});
 
-// app.get("/", async (req, res) => {
-//     res.send("Data.")
-// })
-
 app.delete("/db/hash", verifyAuthToken, async (req, res) => {
     let doc = await pwdHashes.findOne({ emailHash: await c.hashPasswordSalt(req.email, process.env.SALT) });
     if (doc) {
