@@ -207,69 +207,67 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                             warp::reply::json(&error),
                             StatusCode::UNAUTHORIZED,
                         ))
-                    } else {
-                        if let Some(p) = login.password {
-                            let verified = verify(p, &l.user.password_hash)
-                                .expect("Unexpected error: failed to verify password");
-                            if verified {
-                                if l.user.mfa_enabled {
-                                    let continue_token = generate_id();
-                                    let duration = SystemTime::now()
-                                        .duration_since(UNIX_EPOCH)
-                                        .expect("Unexpected error: time went backwards");
-                                    let pending_mfa = PendingMfa {
-                                        time: duration.as_secs(),
-                                        user: l.user.clone(),
-                                        email: l.email.clone(),
-                                    };
-                                    PENDING_MFAS.insert(continue_token.clone(), pending_mfa);
-                                    let response = LoginResponse {
-                                        token: None,
-                                        continue_token: Some(continue_token),
-                                        mfa_enabled: Some(true),
-                                    };
-                                    Ok(warp::reply::with_status(
-                                        warp::reply::json(&response),
-                                        StatusCode::OK,
-                                    ))
-                                } else {
-                                    let jwt_object = UserJwt {
-                                        id: l.user.id.clone(),
-                                    };
-                                    let token = encode(
-                                        &Header::default(),
-                                        &jwt_object,
-                                        &EncodingKey::from_secret(JWT_SECRET.as_ref()),
-                                    )
-                                    .expect("Unexpected error: failed to encode token");
-                                    let response = LoginResponse {
-                                        token: Some(token),
-                                        continue_token: None,
-                                        mfa_enabled: Some(false),
-                                    };
-                                    Ok(warp::reply::with_status(
-                                        warp::reply::json(&response),
-                                        StatusCode::OK,
-                                    ))
-                                }
-                            } else {
-                                let error = LoginError {
-                                    error: "Invalid password".to_string(),
+                    } else if let Some(p) = login.password {
+                        let verified = verify(p, &l.user.password_hash)
+                            .expect("Unexpected error: failed to verify password");
+                        if verified {
+                            if l.user.mfa_enabled {
+                                let continue_token = generate_id();
+                                let duration = SystemTime::now()
+                                    .duration_since(UNIX_EPOCH)
+                                    .expect("Unexpected error: time went backwards");
+                                let pending_mfa = PendingMfa {
+                                    time: duration.as_secs(),
+                                    user: l.user.clone(),
+                                    email: l.email.clone(),
+                                };
+                                PENDING_MFAS.insert(continue_token.clone(), pending_mfa);
+                                let response = LoginResponse {
+                                    token: None,
+                                    continue_token: Some(continue_token),
+                                    mfa_enabled: Some(true),
                                 };
                                 Ok(warp::reply::with_status(
-                                    warp::reply::json(&error),
-                                    StatusCode::UNAUTHORIZED,
+                                    warp::reply::json(&response),
+                                    StatusCode::OK,
+                                ))
+                            } else {
+                                let jwt_object = UserJwt {
+                                    id: l.user.id.clone(),
+                                };
+                                let token = encode(
+                                    &Header::default(),
+                                    &jwt_object,
+                                    &EncodingKey::from_secret(JWT_SECRET.as_ref()),
+                                )
+                                .expect("Unexpected error: failed to encode token");
+                                let response = LoginResponse {
+                                    token: Some(token),
+                                    continue_token: None,
+                                    mfa_enabled: Some(false),
+                                };
+                                Ok(warp::reply::with_status(
+                                    warp::reply::json(&response),
+                                    StatusCode::OK,
                                 ))
                             }
                         } else {
                             let error = LoginError {
-                                error: "No password provided".to_string(),
+                                error: "Invalid password".to_string(),
                             };
                             Ok(warp::reply::with_status(
                                 warp::reply::json(&error),
-                                StatusCode::BAD_REQUEST,
+                                StatusCode::UNAUTHORIZED,
                             ))
                         }
+                    } else {
+                        let error = LoginError {
+                            error: "No password provided".to_string(),
+                        };
+                        Ok(warp::reply::with_status(
+                            warp::reply::json(&error),
+                            StatusCode::BAD_REQUEST,
+                        ))
                     }
                 } else {
                     let error = LoginError {
@@ -305,58 +303,56 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                             warp::reply::json(&error),
                             StatusCode::UNAUTHORIZED,
                         ))
-                    } else {
-                        if let Some(c) = login.code {
-                            let totp = TOTP::new(
-                                Algorithm::SHA256,
-                                8,
-                                1,
-                                30,
-                                m.user.mfa_secret.as_ref().unwrap(),
-                                Some("Nextflow Cloud Technologies".to_string()),
-                                m.email.clone(),
-                            )
-                            .expect("Unexpected error: could not create TOTP instance");
-                            let current_code = totp
-                                .generate_current()
-                                .expect("Unexpected error: failed to generate code");
-                            if current_code != c {
-                                let error = LoginError {
-                                    error: "Invalid code".to_string(),
-                                };
-                                Ok(warp::reply::with_status(
-                                    warp::reply::json(&error),
-                                    StatusCode::UNAUTHORIZED,
-                                ))
-                            } else {
-                                let jwt_object = UserJwt {
-                                    id: m.user.id.clone(),
-                                };
-                                let token = encode(
-                                    &Header::default(),
-                                    &jwt_object,
-                                    &EncodingKey::from_secret(JWT_SECRET.as_ref()),
-                                )
-                                .expect("Unexpected error: failed to encode token");
-                                let response = LoginResponse {
-                                    token: Some(token),
-                                    continue_token: None,
-                                    mfa_enabled: None,
-                                };
-                                Ok(warp::reply::with_status(
-                                    warp::reply::json(&response),
-                                    StatusCode::OK,
-                                ))
-                            }
-                        } else {
+                    } else if let Some(c) = login.code {
+                        let totp = TOTP::new(
+                            Algorithm::SHA256,
+                            8,
+                            1,
+                            30,
+                            m.user.mfa_secret.as_ref().unwrap(),
+                            Some("Nextflow Cloud Technologies".to_string()),
+                            m.email.clone(),
+                        )
+                        .expect("Unexpected error: could not create TOTP instance");
+                        let current_code = totp
+                            .generate_current()
+                            .expect("Unexpected error: failed to generate code");
+                        if current_code != c {
                             let error = LoginError {
-                                error: "No code provided".to_string(),
+                                error: "Invalid code".to_string(),
                             };
                             Ok(warp::reply::with_status(
                                 warp::reply::json(&error),
-                                StatusCode::BAD_REQUEST,
+                                StatusCode::UNAUTHORIZED,
+                            ))
+                        } else {
+                            let jwt_object = UserJwt {
+                                id: m.user.id.clone(),
+                            };
+                            let token = encode(
+                                &Header::default(),
+                                &jwt_object,
+                                &EncodingKey::from_secret(JWT_SECRET.as_ref()),
+                            )
+                            .expect("Unexpected error: failed to encode token");
+                            let response = LoginResponse {
+                                token: Some(token),
+                                continue_token: None,
+                                mfa_enabled: None,
+                            };
+                            Ok(warp::reply::with_status(
+                                warp::reply::json(&response),
+                                StatusCode::OK,
                             ))
                         }
+                    } else {
+                        let error = LoginError {
+                            error: "No code provided".to_string(),
+                        };
+                        Ok(warp::reply::with_status(
+                            warp::reply::json(&error),
+                            StatusCode::BAD_REQUEST,
+                        ))
                     }
                 } else {
                     let error = LoginError {
