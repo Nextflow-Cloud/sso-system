@@ -1,7 +1,7 @@
 use mongodb::{Client, Database};
 use once_cell::sync::OnceCell;
 
-use crate::environment::{MONGODB_URI, MONGODB_DATABASE};
+use crate::environment::{MONGODB_DATABASE, MONGODB_URI};
 
 static DATABASE: OnceCell<Client> = OnceCell::new();
 
