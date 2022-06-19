@@ -4,7 +4,6 @@ use dashmap::DashMap;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use lazy_static::lazy_static;
 use mongodb::bson::doc;
-use rand::{rngs::StdRng, Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 use totp_rs::{Algorithm, TOTP};
@@ -15,7 +14,7 @@ use warp::{
     Filter, Reply,
 };
 
-use crate::environment::{JWT_SECRET, SALT};
+use crate::{environment::{JWT_SECRET, SALT}, utilities::{generate_id, vec_to_array}};
 
 #[derive(Deserialize, Serialize)]
 pub struct Login {
@@ -69,50 +68,6 @@ pub struct User {
 lazy_static! {
     pub static ref PENDING_LOGINS: DashMap<String, PendingLogin> = DashMap::new();
     pub static ref PENDING_MFAS: DashMap<String, PendingMfa> = DashMap::new();
-}
-
-pub fn vec_to_array<T, const N: usize>(v: Vec<T>) -> [T; N] {
-    v.try_into()
-        .unwrap_or_else(|v: Vec<T>| panic!("Expected a Vec of length {} but it was {}", N, v.len()))
-}
-
-pub fn random_number(size: usize) -> Vec<u8> {
-    let mut rng = StdRng::from_entropy();
-    let mut result: Vec<u8> = vec![0; size];
-    rng.fill(&mut result[..]);
-    result
-}
-
-pub fn generate(random: fn(usize) -> Vec<u8>, alphabet: &[char], size: usize) -> String {
-    assert!(
-        alphabet.len() <= u8::max_value() as usize,
-        "The alphabet cannot be longer than a `u8` (to comply with the `random` function)"
-    );
-    let mask = alphabet.len().next_power_of_two() - 1;
-    let step: usize = 8 * size / 5;
-    let mut id = String::with_capacity(size);
-    loop {
-        let bytes = random(step);
-        for &byte in &bytes {
-            let byte = byte as usize & mask;
-            if alphabet.len() > byte {
-                id.push(alphabet[byte]);
-                if id.len() == size {
-                    return id;
-                }
-            }
-        }
-    }
-}
-
-pub fn generate_id() -> String {
-    generate(
-        random_number,
-        &[
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
-        ],
-        32,
-    )
 }
 
 pub fn route() -> BoxedFilter<(impl Reply,)> {

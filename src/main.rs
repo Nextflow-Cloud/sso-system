@@ -1,6 +1,7 @@
 pub mod database;
 pub mod environment;
 pub mod routes;
+pub mod utilities;
 
 #[async_std::main]
 async fn main() {
