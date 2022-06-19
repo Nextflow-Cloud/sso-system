@@ -1,3 +1,5 @@
+pub mod user;
+
 use mongodb::{Client, Database};
 use once_cell::sync::OnceCell;
 

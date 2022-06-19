@@ -14,7 +14,7 @@ use warp::{
     Filter, Reply,
 };
 
-use crate::{environment::{JWT_SECRET, SALT}, utilities::{generate_id, vec_to_array}};
+use crate::{environment::{JWT_SECRET, SALT}, utilities::{generate_id, vec_to_array}, database::user::User};
 
 #[derive(Deserialize, Serialize)]
 pub struct Login {
@@ -55,16 +55,6 @@ pub struct UserJwt {
     id: String,
 }
 
-// TODO: move to database
-#[derive(Clone, Deserialize, Serialize)]
-pub struct User {
-    id: String,
-    email_hash: String,
-    password_hash: String,
-    mfa_enabled: bool,
-    mfa_secret: Option<String>,
-}
-
 lazy_static! {
     pub static ref PENDING_LOGINS: DashMap<String, PendingLogin> = DashMap::new();
     pub static ref PENDING_MFAS: DashMap<String, PendingMfa> = DashMap::new();
@@ -83,7 +73,7 @@ pub fn route() -> BoxedFilter<(impl Reply,)> {
 pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
     match login.stage {
         1 => {
-            let collection = crate::database::get_database().collection::<User>("users");
+            let collection = crate::database::user::get_collection();
             let salt_bytes =
                 decode(&*SALT).expect("Unexpected error: failed to convert salt to bytes");
             if let Some(e) = login.email {
