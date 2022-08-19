@@ -34,7 +34,6 @@ pub fn route() -> BoxedFilter<(impl Reply,)> {
 pub async fn handle(validate: Validate) -> Result<WithStatus<Json>, warp::Rejection> {
     let result = decode::<UserJwt>(&validate.token, &DecodingKey::from_secret(JWT_SECRET.as_ref()), &Validation::new(jsonwebtoken::Algorithm::HS256));
 
-    // if let Ok(r) = result {
     if result.is_ok() {
         let response = ValidateResponse {
             success: true
