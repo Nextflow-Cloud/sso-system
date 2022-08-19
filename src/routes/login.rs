@@ -52,7 +52,7 @@ pub struct PendingMfa {
 
 #[derive(Deserialize, Serialize)]
 pub struct UserJwt {
-    id: String,
+    pub(crate) id: String,
 }
 
 lazy_static! {
