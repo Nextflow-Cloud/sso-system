@@ -145,6 +145,7 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                         .duration_since(UNIX_EPOCH)
                         .expect("Unexpected error: time went backwards");
                     if duration.as_secs() - l.time > 3600 {
+                        PENDING_LOGINS.remove(&ct);
                         let error = LoginError {
                             error: "Session expired".to_string(),
                         };
@@ -241,6 +242,7 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                         .duration_since(UNIX_EPOCH)
                         .expect("Unexpected error: time went backwards");
                     if duration.as_secs() - m.time > 3600 {
+                        PENDING_MFAS.remove(&ct);
                         let error = LoginError {
                             error: "Session expired".to_string(),
                         };
