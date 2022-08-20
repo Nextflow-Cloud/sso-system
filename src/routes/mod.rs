@@ -8,6 +8,7 @@ pub mod validate;
 pub fn routes() -> BoxedFilter<(impl Reply,)> {
     login::route()
         .or(register::route())
+        .or(delete::route())
         .or(validate::route())
         .or(warp::path("api").map(|| {
             warp::reply::with_status(
