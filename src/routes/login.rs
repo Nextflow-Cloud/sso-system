@@ -14,7 +14,11 @@ use warp::{
     Filter, Reply,
 };
 
-use crate::{environment::{JWT_SECRET, SALT}, utilities::{generate_id, vec_to_array}, database::user::User};
+use crate::{
+    database::user::User,
+    environment::{JWT_SECRET, SALT},
+    utilities::{generate_id, vec_to_array},
+};
 
 #[derive(Deserialize, Serialize)]
 pub struct Login {

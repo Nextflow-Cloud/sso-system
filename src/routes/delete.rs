@@ -1,14 +1,22 @@
-use std::time::{UNIX_EPOCH, SystemTime};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use bcrypt::verify;
 use dashmap::DashMap;
-use jsonwebtoken::{DecodingKey, Validation, Algorithm, decode};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use lazy_static::lazy_static;
 use mongodb::bson::doc;
-use reqwest::{StatusCode, header::{HeaderValue, HeaderMap, AUTHORIZATION}};
-use serde::{Serialize, Deserialize};
+use reqwest::{
+    header::{HeaderMap, HeaderValue, AUTHORIZATION},
+    StatusCode,
+};
+use serde::{Deserialize, Serialize};
 use totp_rs::TOTP;
-use warp::{filters::BoxedFilter, reply::{WithStatus, Json}, Filter, header::headers_cloned, Rejection};
+use warp::{
+    filters::BoxedFilter,
+    header::headers_cloned,
+    reply::{Json, WithStatus},
+    Filter, Rejection,
+};
 
 use crate::{database::user, environment::JWT_SECRET, utilities::generate_id};
 
@@ -30,14 +38,18 @@ pub struct DeleteError {
 #[derive(Deserialize, Serialize)]
 pub struct DeleteResponse {
     success: Option<bool>,
-    continue_token: Option<String>
+    continue_token: Option<String>,
 }
 
-pub fn route() -> BoxedFilter<(WithStatus<warp::reply::Json>, )> {
+pub fn route() -> BoxedFilter<(WithStatus<warp::reply::Json>,)> {
     warp::delete()
         .and(
             warp::path!("api" / "user")
-                .and(headers_cloned().map(move |headers: HeaderMap<HeaderValue>| headers).and_then(authenticate))
+                .and(
+                    headers_cloned()
+                        .map(move |headers: HeaderMap<HeaderValue>| headers)
+                        .and_then(authenticate),
+                )
                 .and(warp::body::json())
                 .and_then(handle),
         )
@@ -88,17 +100,26 @@ lazy_static! {
     pub static ref PENDING_DELETES: DashMap<String, PendingDelete> = DashMap::new();
 }
 
-pub async fn handle(jwt: Option<UserJwt>, delete_user: Delete) -> Result<WithStatus<Json>, Rejection> {
+pub async fn handle(
+    jwt: Option<UserJwt>,
+    delete_user: Delete,
+) -> Result<WithStatus<Json>, Rejection> {
     if let Some(j) = jwt {
         if delete_user.stage == 1 {
             if let Some(p) = delete_user.password {
                 let collection = user::get_collection();
-                let user = collection.find_one(doc! {
-                    "id": j.id.clone()
-                }, None).await;
+                let user = collection
+                    .find_one(
+                        doc! {
+                            "id": j.id.clone()
+                        },
+                        None,
+                    )
+                    .await;
                 if let Ok(r) = user {
                     if let Some(u) = r {
-                        let verified = verify(p, &u.password_hash).expect("Unexpected error: failed to verify password");
+                        let verified = verify(p, &u.password_hash)
+                            .expect("Unexpected error: failed to verify password");
                         if verified {
                             if u.mfa_enabled {
                                 let continue_token = generate_id();
@@ -113,20 +134,25 @@ pub async fn handle(jwt: Option<UserJwt>, delete_user: Delete) -> Result<WithSta
                                 PENDING_DELETES.insert(continue_token.clone(), delete_session);
                                 let response = DeleteResponse {
                                     continue_token: Some(continue_token),
-                                    success: None
+                                    success: None,
                                 };
                                 Ok(warp::reply::with_status(
                                     warp::reply::json(&response),
                                     StatusCode::OK,
                                 ))
                             } else {
-                                let result = collection.delete_one(doc! {
-                                    "id": j.id
-                                }, None).await;
+                                let result = collection
+                                    .delete_one(
+                                        doc! {
+                                            "id": j.id
+                                        },
+                                        None,
+                                    )
+                                    .await;
                                 if result.is_ok() {
                                     let error = DeleteResponse {
                                         success: Some(true),
-                                        continue_token: None
+                                        continue_token: None,
                                     };
                                     Ok(warp::reply::with_status(
                                         warp::reply::json(&error),
@@ -186,7 +212,7 @@ pub async fn handle(jwt: Option<UserJwt>, delete_user: Delete) -> Result<WithSta
                         let duration = SystemTime::now()
                             .duration_since(UNIX_EPOCH)
                             .expect("Unexpected error: time went backwards");
-                        if duration.as_secs() - pd.time > 3600 {      
+                        if duration.as_secs() - pd.time > 3600 {
                             PENDING_DELETES.remove(&ct);
                             let error = DeleteError {
                                 error: "Session expired".to_string(),
@@ -205,7 +231,8 @@ pub async fn handle(jwt: Option<UserJwt>, delete_user: Delete) -> Result<WithSta
                                 temp.as_ref().unwrap(),
                                 Some("Nextflow Cloud Technologies".to_string()),
                                 pd.id.clone(),
-                            ).expect("Unexpected error: could not create TOTP instance");
+                            )
+                            .expect("Unexpected error: could not create TOTP instance");
                             let current_code = totp
                                 .generate_current()
                                 .expect("Unexpected error: failed to generate code");
@@ -219,13 +246,18 @@ pub async fn handle(jwt: Option<UserJwt>, delete_user: Delete) -> Result<WithSta
                                 ))
                             } else {
                                 let collection = user::get_collection();
-                                let result = collection.delete_one(doc! {
-                                    "id": j.id
-                                }, None).await;
+                                let result = collection
+                                    .delete_one(
+                                        doc! {
+                                            "id": j.id
+                                        },
+                                        None,
+                                    )
+                                    .await;
                                 if result.is_ok() {
                                     let error = DeleteResponse {
                                         success: Some(true),
-                                        continue_token: None
+                                        continue_token: None,
                                     };
                                     Ok(warp::reply::with_status(
                                         warp::reply::json(&error),

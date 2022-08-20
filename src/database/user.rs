@@ -13,7 +13,7 @@ pub struct User {
     pub display_name: String,
     pub mfa_enabled: bool,
     pub mfa_secret: Option<String>,
-    // Recovery email, client-encrypted keys? 
+    // Recovery email, client-encrypted keys?
 }
 
 pub fn get_collection() -> Collection<User> {
@@ -22,7 +22,9 @@ pub fn get_collection() -> Collection<User> {
         c.clone()
     } else {
         let c = super::get_database().collection::<User>("users");
-        COLLECTION.set(c.clone()).expect("Unexpected error: failed to set collection");
+        COLLECTION
+            .set(c.clone())
+            .expect("Unexpected error: failed to set collection");
         c
     }
 }
