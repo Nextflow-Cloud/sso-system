@@ -49,11 +49,7 @@ pub struct HCaptchaResponse {
 
 pub fn route() -> BoxedFilter<(impl Reply,)> {
     warp::post()
-        .and(
-            warp::path!("api" / "user")
-                .and(warp::body::json())
-                .and_then(handle),
-        )
+        .and(warp::path("user").and(warp::body::json()).and_then(handle))
         .boxed()
 }
 

@@ -29,7 +29,7 @@ pub struct ValidateResponse {
 pub fn route() -> BoxedFilter<(impl Reply,)> {
     warp::post()
         .and(
-            warp::path!("api" / "validate")
+            warp::path("validate")
                 .and(warp::body::json())
                 .and_then(handle),
         )

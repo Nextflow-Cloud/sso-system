@@ -44,7 +44,7 @@ pub struct DeleteResponse {
 pub fn route() -> BoxedFilter<(WithStatus<warp::reply::Json>,)> {
     warp::delete()
         .and(
-            warp::path!("api" / "user")
+            warp::path("user")
                 .and(
                     headers_cloned()
                         .map(move |headers: HeaderMap<HeaderValue>| headers)
