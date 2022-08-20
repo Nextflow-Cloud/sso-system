@@ -3,6 +3,7 @@ use warp::{filters::BoxedFilter, hyper::StatusCode, Filter, Reply};
 pub mod login;
 pub mod register;
 pub mod validate;
+pub mod delete;
 
 pub fn routes() -> BoxedFilter<(impl Reply,)> {
     login::route()
