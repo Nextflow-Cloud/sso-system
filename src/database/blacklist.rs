@@ -1,6 +1,3 @@
-// use std::time::{UNIX_EPOCH, SystemTime};
-
-// use chrono::Utc;
 use mongodb::{Collection, bson::doc};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
@@ -10,7 +7,6 @@ static COLLECTION: OnceCell<Collection<Blacklist>> = OnceCell::new();
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Blacklist {
     pub token: String,
-    // pub expires: u64
 } 
 
 pub fn get_collection() -> Collection<Blacklist> {
@@ -25,21 +21,3 @@ pub fn get_collection() -> Collection<Blacklist> {
         c
     }
 }
-
-// // Purges all expired blacklist entries.
-// pub async fn purge_blacklist() -> bool { // ok go ahead :)
-//     let collection = get_collection();
-//     // let duration = SystemTime::now()
-//     //                         .duration_since(UNIX_EPOCH).expect("Unexpected error: time went backwards");
-//     let today = Utc::now();
-//     let result = collection.delete_many(doc! {
-//         "$lt": {
-//             "expires": today
-//         }
-//     }, None).await; // <-- this
-//     if result.is_ok() {
-//         true
-//     } else {
-//         false
-//     }
-// }

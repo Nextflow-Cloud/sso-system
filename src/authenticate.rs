@@ -8,7 +8,6 @@ use crate::{routes::login::UserJwt, environment::JWT_SECRET};
 pub struct Authenticate {
     pub(crate) jwt: String,
     pub(crate) jwt_content: UserJwt,
-    // jwt_expiry: DateTime<Utc>
 }
 
 fn jwt_from_header(headers: &HeaderMap<HeaderValue>) -> Option<String> {
@@ -39,7 +38,6 @@ pub async fn authenticate(headers: HeaderMap<HeaderValue>) -> Result<Option<Auth
             let value = Authenticate {
                 jwt: j,
                 jwt_content: d.claims,
-                // jwt_expiry: d.
             };
             Ok(Some(value))
         } else {
