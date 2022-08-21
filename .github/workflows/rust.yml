@@ -2,9 +2,9 @@ name: Rust
 
 on:
   push:
-    branches: [ rust ]
+    branches: [ dev ]
   pull_request:
-    branches: [ rust ]
+    branches: [ dev ]
   workflow_dispatch:
     inputs:
       verbose:
