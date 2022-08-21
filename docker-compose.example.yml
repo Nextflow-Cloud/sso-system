@@ -1,0 +1,20 @@
+version: "3.9"
+
+networks:
+  default:
+    name: nextflow
+
+services:
+  sso-system:
+    build: .
+    environment:
+      - MONGODB_URI=mongodb://sso-system-mongodb:27017
+      - MONGODB_DATABASE=sso
+      - JWT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      - SALT=xxxxxxxxxxxxxxxxxxxxxxxx
+      - HCAPTCHA_SECRET=0x0000000000000000000000000000000000000000
+    restart: always
+  sso-system-mongodb:
+    image: mongo
+    volumes: ./database:/data/db
+    restart: always
