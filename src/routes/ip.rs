@@ -1,27 +1,38 @@
-use std::net::SocketAddr;
+use std::{net::{SocketAddr, IpAddr}, convert::Infallible};
 
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use warp::{
     filters::BoxedFilter,
     reply::{Json, WithStatus},
-    Filter, Reply,
+    Filter, Reply, addr::remote,
 };
+use warp_real_ip::get_forwarded_for;
 
 #[derive(Deserialize, Serialize)]
 pub struct IpResponse {
     ip: String,
 }
 
+pub fn real_ip() -> impl Filter<Extract = (Option<IpAddr>,), Error = Infallible> + Clone {
+    remote().and(get_forwarded_for()).map(
+        move |addr: Option<SocketAddr>, forwarded_for: Vec<IpAddr>| {
+            addr.map(|addr| {
+                forwarded_for.first().copied().unwrap_or_else(|| addr.ip())
+            })
+        },
+    )
+}
+
 pub fn route() -> BoxedFilter<(impl Reply,)> {
     warp::get()
-        .and(warp::path("ip").and(warp::addr::remote()).and_then(handle))
+        .and(warp::path("ip").and(real_ip()).and_then(handle))
         .boxed()
 }
 
-pub async fn handle(ip: Option<SocketAddr>) -> Result<WithStatus<Json>, warp::Rejection> {
+pub async fn handle(ip: Option<IpAddr>) -> Result<WithStatus<Json>, warp::Rejection> {
     let error = IpResponse {
-        ip: ip.unwrap().ip().to_string(),
+        ip: ip.unwrap().to_string(),
     };
     Ok(warp::reply::with_status(
         warp::reply::json(&error),
