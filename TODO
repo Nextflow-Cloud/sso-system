@@ -1,4 +1,2 @@
-Add raw HTML elements to React project
-Complete APIv2
-Conform to REST by changing HTTP response codes
-Development and production branches and deployment system
+Set up CI and deployment system
+Check for best practices (lint and format)

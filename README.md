@@ -1,49 +1,50 @@
 # Nextflow SSO authentication system
 
-### About
-Built on MERN stack, the Nextflow SSO authentication system allows you to log in to all Nextflow services with a single account.
+## About
+Introducing the all-new server, which has been rewritten from the ground up for a strongly typed and fast system.
+
+Formerly built on MERN stack, the Nextflow SSO authentication system allows you to log in to all Nextflow services with a single account.
 * Flexible and versatile
 * Clean and fluid interface
 * Fast
 
-This is the Express-based backend. For the React-based frontend, please check out [sso-system-client](https://github.com/Nextflow-Cloud/sso-system-client).
+The entire Nextflow SSO authentication system is currently being overhauled. We are introducing a new type of stack: WARM. WARM stands for [Warp](https://crates.io/crates/warp), [Astro](https://astro.build), [Rust](https://rust-lang.org), and [MongoDB](https://mongodb.com). 
 
-### Setup without Docker
-This service uses MongoDB for its backend management, so you will need a MongoDB cluster or self hosted MongoDB server both of which for the pricing, and downloads page respectively can be found at [MongoDB's Website](https://www.mongodb.com/)
-* Obtain a working MongoDB cluster or MongoDB self-hosted server
-* Go in a terminal and run node index.js or npm start
-* Enjoy the service
+This is the Rust-based backend. For the Preact-based frontend, please check out [sso-system-client](https://github.com/Nextflow-Cloud/sso-system-client). There are currently no plans to overhaul the client yet. 
 
-### Setup with Docker
-This service uses MongoDB for its backend management, so you will need a MongoDB cluster or self hosted MongoDB server both of which for the pricing, and downloads page respectively can be found at [MongoDB's Website](https://www.mongodb.com/).
-You will also need to install docker which can be installed on many linux distributions by the convienence script provided by Docker.
+## Hosting the server
 
-#### Get the convienence script:
+### Set up database
+This service uses MongoDB as a database, so you will need a MongoDB cluster or self-hosted MongoDB server. More information can be found on [their website](https://mongodb.com/).
 
-```shell
-curl -fsSL https://get.docker.com -o get-docker.sh
-```
+### Run with Docker
+If you need an included database server, use Docker. Docker is highly recommended to contain Obviously, you will also need to install Docker. It can be installed on most Linux distributions using a convenience script or package manager. Please check [their website](https://docs.docker.com/engine/install/) for more detailed documentation on how to install Docker and configuration.
 
-#### Run the convience script and install Docker:
+You will need to have the Docker Compose plugin installed along with Docker itself.
 
-```shell
-sh ./get-docker.sh
-```
+Copy `docker-compose.example.yml` into your own `docker-compose.yml` and modify it as needed. If you have an existing MongoDB instance, you may remove the `sso-system-mongodb` entry and point the `MONGODB_URI` and `MONGODB_DATABASE` variables to your own instance. Otherwise, keep the entry to use the included database server.
 
-#### Obtain a working instance of a MongoDB cluster or get a MongoDB self-hosted server
+Populate the other environment variables as necessary. Currently, all variables are required for intended operation of the server.
 
-#### Run our Docker build script
+To start the container, run `docker compose up -d` (with sudo as necessary).
 
-```shell
-sudo ./build.sh
-```
+### Run without Docker 
+Although Docker is the preferred method of running the server, you can do so without Docker as well. You will need to run your own MongoDB instance or obtain a cluster. 
 
-* Enjoy the service at last :)
+Before running, you should populate the environment variables with the following:
+* `MONGODB_URI`: URI pointing to the MongoDB instance or cluster.
+* `MONGODB_DATABASE`: The database to use in MongoDB.
+* `JWT_SECRET`: A 32 byte key to encode JWT tokens.
+* `SALT`: A salt to hash passwords and emails.
+* `HCAPTCHA_SECRET`: A secret from hCaptcha to verify hCaptcha tokens.
 
+Currently, all variables are required for intended operation of the server.
+
+After doing so, run `cargo run --release` to build and run the server. It may take a while to build, especially on ARM64 systems.
 
 ### Contribute
 Nextflow Cloud Technologies is committed to open-source software and free use. This means that you are free to view, modify, contribute, and support the project. Making a pull request with something useful is highly encouraged as this project is made possible by contributors like you who support the project.
 
-* prod: Most stable branch -- used in production [here](https://secure.nextflow.cloud). 
-* main: Beta/release preview -- mostly stable and likely will be pushed to production with a couple fixes.
-* dev: Active development -- expect a variety of unstable and/or unfinished features and fixes.
+* `prod`: Most stable branch: used in production [here](https://sso.nextflow.cloud). 
+* `main`: Beta or release preview: mostly stable and likely will be pushed to production with a couple fixes.
+* `dev`: Active development: expect a variety of unstable and/or unfinished features and fixes.
