@@ -2,11 +2,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use bcrypt::verify;
 use dashmap::DashMap;
-use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use lazy_static::lazy_static;
 use mongodb::bson::doc;
 use reqwest::{
-    header::{HeaderMap, HeaderValue, AUTHORIZATION},
+    header::{HeaderMap, HeaderValue},
     StatusCode,
 };
 use serde::{Deserialize, Serialize};
@@ -18,9 +17,7 @@ use warp::{
     Filter, Rejection,
 };
 
-use crate::{database::user, environment::JWT_SECRET, utilities::generate_id};
-
-use super::login::UserJwt;
+use crate::{database::user, utilities::generate_id, authenticate::{authenticate, Authenticate}};
 
 #[derive(Deserialize, Serialize)]
 pub struct Delete {
@@ -56,40 +53,6 @@ pub fn route() -> BoxedFilter<(WithStatus<warp::reply::Json>,)> {
         .boxed()
 }
 
-fn jwt_from_header(headers: &HeaderMap<HeaderValue>) -> Option<String> {
-    let header = match headers.get(AUTHORIZATION) {
-        Some(v) => v,
-        None => return None,
-    };
-    let auth_header = match std::str::from_utf8(header.as_bytes()) {
-        Ok(v) => v,
-        Err(_) => return None,
-    };
-    let bearer = "Bearer ";
-    if !auth_header.starts_with(bearer) {
-        return None;
-    }
-    Some(auth_header.trim_start_matches(bearer).to_owned())
-}
-
-pub async fn authenticate(headers: HeaderMap<HeaderValue>) -> Result<Option<UserJwt>, Rejection> {
-    let jwt = jwt_from_header(&headers);
-    if let Some(j) = jwt {
-        let decoded = decode::<UserJwt>(
-            &j,
-            &DecodingKey::from_secret(JWT_SECRET.as_ref()),
-            &Validation::new(Algorithm::HS512),
-        );
-        if let Ok(d) = decoded {
-            Ok(Some(d.claims))
-        } else {
-            Ok(None)
-        }
-    } else {
-        Ok(None)
-    }
-}
-
 pub struct PendingDelete {
     id: String,
     mfa_secret: String,
@@ -101,7 +64,7 @@ lazy_static! {
 }
 
 pub async fn handle(
-    jwt: Option<UserJwt>,
+    jwt: Option<Authenticate>,
     delete_user: Delete,
 ) -> Result<WithStatus<Json>, Rejection> {
     if let Some(j) = jwt {
@@ -111,7 +74,7 @@ pub async fn handle(
                 let user = collection
                     .find_one(
                         doc! {
-                            "id": j.id.clone()
+                            "id": j.jwt_content.id.clone()
                         },
                         None,
                     )
@@ -127,7 +90,7 @@ pub async fn handle(
                                     .duration_since(UNIX_EPOCH)
                                     .expect("Unexpected error: time went backwards");
                                 let delete_session = PendingDelete {
-                                    id: j.id,
+                                    id: j.jwt_content.id,
                                     mfa_secret: u.mfa_secret.unwrap(),
                                     time: duration.as_secs(),
                                 };
@@ -144,7 +107,7 @@ pub async fn handle(
                                 let result = collection
                                     .delete_one(
                                         doc! {
-                                            "id": j.id
+                                            "id": j.jwt_content.id
                                         },
                                         None,
                                     )
@@ -158,6 +121,7 @@ pub async fn handle(
                                         warp::reply::json(&error),
                                         StatusCode::OK,
                                     ))
+                                    // TODO: add deleted tokens to blacklist
                                 } else {
                                     let error = DeleteError {
                                         error: "Unable to delete user".to_string(),
@@ -249,7 +213,7 @@ pub async fn handle(
                                 let result = collection
                                     .delete_one(
                                         doc! {
-                                            "id": j.id
+                                            "id": j.jwt_content.id
                                         },
                                         None,
                                     )
