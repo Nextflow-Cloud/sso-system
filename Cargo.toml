@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 async-std = { version = "1.11.0", features = ["attributes", "tokio1"] }
 futures-util = "0.3"
+chrono = "0.4.22"
 
 dashmap = "5.3.4"
 lazy_static = "1.4.0"
@@ -19,10 +20,15 @@ rand = "0.8.5"
 
 reqwest = "0.11.11"
 warp = "0.3.2"
+warp-real-ip = "0.2.0"
 serde = "1.0.137"
 serde_json = "1.0.83"
+
 mongodb = "2.2.1"
+bson = { version = "2.4.0", features = ["chrono-0_4"] }
 jsonwebtoken = "8.1.0"
+
+lettre = "0.10"
 
 base64 = "0.13.0"
 totp-rs = { version = "2.0.1", features = ["qr"] }

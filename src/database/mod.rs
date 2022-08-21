@@ -1,3 +1,4 @@
+pub mod blacklist;
 pub mod user;
 
 use mongodb::{Client, Database};
