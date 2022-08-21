@@ -1,4 +1,4 @@
-use mongodb::{Collection, bson::doc};
+use mongodb::{bson::doc, Collection};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
@@ -7,7 +7,7 @@ static COLLECTION: OnceCell<Collection<Blacklist>> = OnceCell::new();
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Blacklist {
     pub token: String,
-} 
+}
 
 pub fn get_collection() -> Collection<Blacklist> {
     let collection = COLLECTION.get();

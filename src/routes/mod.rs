@@ -3,9 +3,9 @@ use warp::{filters::BoxedFilter, hyper::StatusCode, Filter, Reply};
 pub mod delete;
 pub mod ip;
 pub mod login;
+pub mod logout;
 pub mod register;
 pub mod validate;
-pub mod logout;
 
 pub fn routes() -> BoxedFilter<(impl Reply,)> {
     warp::path("api")

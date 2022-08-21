@@ -17,7 +17,14 @@ use warp::{
     Filter, Rejection,
 };
 
-use crate::{database::{user, blacklist::{self, Blacklist}}, utilities::generate_id, authenticate::{authenticate, Authenticate}};
+use crate::{
+    authenticate::{authenticate, Authenticate},
+    database::{
+        blacklist::{self, Blacklist},
+        user,
+    },
+    utilities::generate_id,
+};
 
 #[derive(Deserialize, Serialize)]
 pub struct Delete {
@@ -105,9 +112,8 @@ pub async fn handle(
                                 ))
                             } else {
                                 let blacklist = blacklist::get_collection();
-                                let blacklist_result = blacklist.insert_one(Blacklist {
-                                    token: j.jwt
-                                }, None).await;
+                                let blacklist_result =
+                                    blacklist.insert_one(Blacklist { token: j.jwt }, None).await;
                                 if blacklist_result.is_ok() {
                                     let result = collection
                                         .delete_one(
@@ -223,9 +229,8 @@ pub async fn handle(
                                 ))
                             } else {
                                 let blacklist = blacklist::get_collection();
-                                let blacklist_result = blacklist.insert_one(Blacklist {
-                                    token: j.jwt
-                                }, None).await;
+                                let blacklist_result =
+                                    blacklist.insert_one(Blacklist { token: j.jwt }, None).await;
                                 if blacklist_result.is_ok() {
                                     let collection = user::get_collection();
                                     let result = collection

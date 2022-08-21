@@ -1,11 +1,15 @@
-use std::{net::{SocketAddr, IpAddr}, convert::Infallible};
+use std::{
+    convert::Infallible,
+    net::{IpAddr, SocketAddr},
+};
 
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use warp::{
+    addr::remote,
     filters::BoxedFilter,
     reply::{Json, WithStatus},
-    Filter, Reply, addr::remote,
+    Filter, Reply,
 };
 use warp_real_ip::get_forwarded_for;
 
@@ -17,9 +21,7 @@ pub struct IpResponse {
 pub fn real_ip() -> impl Filter<Extract = (Option<IpAddr>,), Error = Infallible> + Clone {
     remote().and(get_forwarded_for()).map(
         move |addr: Option<SocketAddr>, forwarded_for: Vec<IpAddr>| {
-            addr.map(|addr| {
-                forwarded_for.first().copied().unwrap_or_else(|| addr.ip())
-            })
+            addr.map(|addr| forwarded_for.first().copied().unwrap_or_else(|| addr.ip()))
         },
     )
 }

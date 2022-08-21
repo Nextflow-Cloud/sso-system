@@ -1,9 +1,9 @@
 // use chrono::{DateTime, Utc};
-use jsonwebtoken::{Algorithm, Validation, DecodingKey, decode};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use warp::Rejection;
 
-use crate::{routes::login::UserJwt, environment::JWT_SECRET};
+use crate::{environment::JWT_SECRET, routes::login::UserJwt};
 
 pub struct Authenticate {
     pub(crate) jwt: String,
@@ -25,8 +25,10 @@ fn jwt_from_header(headers: &HeaderMap<HeaderValue>) -> Option<String> {
     }
     Some(auth_header.trim_start_matches(bearer).to_owned())
 }
-    
-pub async fn authenticate(headers: HeaderMap<HeaderValue>) -> Result<Option<Authenticate>, Rejection> {
+
+pub async fn authenticate(
+    headers: HeaderMap<HeaderValue>,
+) -> Result<Option<Authenticate>, Rejection> {
     let jwt = jwt_from_header(&headers);
     if let Some(j) = jwt {
         let decoded = decode::<UserJwt>(
