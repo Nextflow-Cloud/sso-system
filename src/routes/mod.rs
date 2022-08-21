@@ -5,12 +5,14 @@ pub mod ip;
 pub mod login;
 pub mod register;
 pub mod validate;
+pub mod logout;
 
 pub fn routes() -> BoxedFilter<(impl Reply,)> {
     warp::path("api")
         .and(
             ip::route()
                 .or(login::route())
+                .or(logout::route())
                 .or(register::route())
                 .or(delete::route())
                 .or(validate::route())
