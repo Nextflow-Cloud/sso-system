@@ -17,7 +17,7 @@ use warp::{
     Filter, Rejection,
 };
 
-use crate::{database::user, utilities::generate_id, authenticate::{authenticate, Authenticate}};
+use crate::{database::{user, blacklist::{self, Blacklist}}, utilities::generate_id, authenticate::{authenticate, Authenticate}};
 
 #[derive(Deserialize, Serialize)]
 pub struct Delete {
@@ -104,24 +104,37 @@ pub async fn handle(
                                     StatusCode::OK,
                                 ))
                             } else {
-                                let result = collection
-                                    .delete_one(
-                                        doc! {
-                                            "id": j.jwt_content.id
-                                        },
-                                        None,
-                                    )
-                                    .await;
-                                if result.is_ok() {
-                                    let error = DeleteResponse {
-                                        success: Some(true),
-                                        continue_token: None,
-                                    };
-                                    Ok(warp::reply::with_status(
-                                        warp::reply::json(&error),
-                                        StatusCode::OK,
-                                    ))
-                                    // TODO: add deleted tokens to blacklist
+                                let blacklist = blacklist::get_collection();
+                                let blacklist_result = blacklist.insert_one(Blacklist {
+                                    token: j.jwt
+                                }, None).await;
+                                if blacklist_result.is_ok() {
+                                    let result = collection
+                                        .delete_one(
+                                            doc! {
+                                                "id": j.jwt_content.id
+                                            },
+                                            None,
+                                        )
+                                        .await;
+                                    if result.is_ok() {
+                                        let response = DeleteResponse {
+                                            success: Some(true),
+                                            continue_token: None,
+                                        };
+                                        Ok(warp::reply::with_status(
+                                            warp::reply::json(&response),
+                                            StatusCode::OK,
+                                        ))
+                                    } else {
+                                        let error = DeleteError {
+                                            error: "Unable to delete user".to_string(),
+                                        };
+                                        Ok(warp::reply::with_status(
+                                            warp::reply::json(&error),
+                                            StatusCode::INTERNAL_SERVER_ERROR,
+                                        ))
+                                    }
                                 } else {
                                     let error = DeleteError {
                                         error: "Unable to delete user".to_string(),
@@ -209,24 +222,38 @@ pub async fn handle(
                                     StatusCode::UNAUTHORIZED,
                                 ))
                             } else {
-                                let collection = user::get_collection();
-                                let result = collection
-                                    .delete_one(
-                                        doc! {
-                                            "id": j.jwt_content.id
-                                        },
-                                        None,
-                                    )
-                                    .await;
-                                if result.is_ok() {
-                                    let error = DeleteResponse {
-                                        success: Some(true),
-                                        continue_token: None,
-                                    };
-                                    Ok(warp::reply::with_status(
-                                        warp::reply::json(&error),
-                                        StatusCode::OK,
-                                    ))
+                                let blacklist = blacklist::get_collection();
+                                let blacklist_result = blacklist.insert_one(Blacklist {
+                                    token: j.jwt
+                                }, None).await;
+                                if blacklist_result.is_ok() {
+                                    let collection = user::get_collection();
+                                    let result = collection
+                                        .delete_one(
+                                            doc! {
+                                                "id": j.jwt_content.id
+                                            },
+                                            None,
+                                        )
+                                        .await;
+                                    if result.is_ok() {
+                                        let response = DeleteResponse {
+                                            success: Some(true),
+                                            continue_token: None,
+                                        };
+                                        Ok(warp::reply::with_status(
+                                            warp::reply::json(&response),
+                                            StatusCode::OK,
+                                        ))
+                                    } else {
+                                        let error = DeleteError {
+                                            error: "Unable to delete user".to_string(),
+                                        };
+                                        Ok(warp::reply::with_status(
+                                            warp::reply::json(&error),
+                                            StatusCode::INTERNAL_SERVER_ERROR,
+                                        ))
+                                    }
                                 } else {
                                     let error = DeleteError {
                                         error: "Unable to delete user".to_string(),
