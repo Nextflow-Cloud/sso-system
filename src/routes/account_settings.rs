@@ -40,12 +40,8 @@ pub struct PendingMfa {
     previous_request: AccountSettings,
     user: User
 }
-// pub struct PendingMfaEnable {
-
-// }
 
 lazy_static! {
-    // pub static ref PENDING_MFA_ENABLES: DashMap<String, PendingMfaEnable> = DashMap::new();
     pub static ref PENDING_MFAS: DashMap<String, PendingMfa> = DashMap::new();
 }
 
@@ -354,10 +350,6 @@ pub async fn handle(jwt: Option<Authenticate>, account_settings: AccountSettings
                 StatusCode::BAD_REQUEST,
             ))
         }
-        // Ok(warp::reply::with_status(
-        //     warp::reply::json(&response),
-        //     StatusCode::OK,
-        // ))
     } else {
         let error = "Invalid authorization".to_string();
         Ok(warp::reply::with_status(
@@ -366,4 +358,3 @@ pub async fn handle(jwt: Option<Authenticate>, account_settings: AccountSettings
         ))
     }
 }
-

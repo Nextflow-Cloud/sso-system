@@ -31,10 +31,6 @@ pub fn route() -> BoxedFilter<(impl Reply,)> {
         .boxed()
 }
 
-// pub async fn handle(account_settings: ProfileSettings) -> Result<WithStatus<Json>, warp::Rejection> {
-
-// }
-
 async fn multipart_form(user_id: String, parts: Vec<Part>) -> Option<HashMap<String, String>> {
     let mut vars: HashMap<String, String> = HashMap::new();
     for p in parts {
@@ -50,15 +46,12 @@ async fn multipart_form(user_id: String, parts: Vec<Part>) -> Option<HashMap<Str
                 return None;
             }
         }
-
         let value = p.stream().try_fold(Vec::new(), |mut vec, data| {
             vec.put(data);
             async move { Ok(vec) }
         }).await.map_err(|e| {
             println!("reading file error: {}", e);
-            // None
         }).unwrap();
-
         if file_extension.is_some() {
             let mut file_path = env::current_dir().unwrap();
             file_path.push("avatars");
@@ -66,7 +59,6 @@ async fn multipart_form(user_id: String, parts: Vec<Part>) -> Option<HashMap<Str
             file_path.push(new_filename.clone());
             async_std::fs::write(&file_path, value).await.map_err(|e| {
                 println!("error writing file: {}", e);
-                // None
             }).unwrap();
             vars.insert(field_name, new_filename);
         } else {
@@ -142,18 +134,6 @@ pub async fn handle(jwt: Option<Authenticate>, content_type: HeaderValue, form_d
                     StatusCode::NOT_FOUND,
                 ))
             }
-            
-            // let result = collection.update_one(
-            //     doc! {"id": j.jwt_content.id},
-            //     doc! {
-            //         "$set": {
-            //             "name": form.get("name").unwrap_or(&String::new()),
-            //             "description": form.get("description").unwrap_or(&String::new()),
-            //             "website": form.get("website").unwrap_or(&String::new())
-            //         }
-            //     },
-            //     None
-            // ).await.unwrap();
         } else {
             let response = ProfileSettingsError {
                 error: "Invalid body".to_string()
