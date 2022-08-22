@@ -12,7 +12,7 @@ use warp::{
 };
 
 use crate::{
-    database::{user::User, profile::UserProfile},
+    database::{profile::UserProfile, user::User},
     environment::{HCAPTCHA_SECRET, JWT_SECRET, SALT},
     utilities::{generate_id, vec_to_array},
 };
@@ -101,7 +101,7 @@ pub async fn handle(register: Register) -> Result<WithStatus<Json>, warp::Reject
                             username: register.username,
                             email_hash: hashed.to_string(),
                             password_hash: password_hash.to_string(),
-                            public_email: false
+                            public_email: false,
                         };
                         let profile_document = UserProfile {
                             id: user_id.clone(),
@@ -109,11 +109,12 @@ pub async fn handle(register: Register) -> Result<WithStatus<Json>, warp::Reject
                             description: String::new(),
                             website: String::new(),
                             // TODO: default avatar
-                            avatar: "default.png".to_string()
+                            avatar: "default.png".to_string(),
                         };
                         let insert_result = collection.insert_one(user_document, None).await;
                         let profile_collection = crate::database::profile::get_collection();
-                        let profile_result = profile_collection.insert_one(profile_document, None).await;
+                        let profile_result =
+                            profile_collection.insert_one(profile_document, None).await;
                         if insert_result.is_err() || profile_result.is_err() {
                             let error = RegisterError {
                                 error: "Failed to insert into database".to_string(),

@@ -1,6 +1,6 @@
 pub mod blacklist;
-pub mod user;
 pub mod profile;
+pub mod user;
 
 use mongodb::{Client, Database};
 use once_cell::sync::OnceCell;

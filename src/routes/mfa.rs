@@ -7,16 +7,20 @@ use mongodb::bson::doc;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use totp_rs::TOTP;
-use warp::{filters::BoxedFilter, header::headers_cloned, Reply, Filter};
+use warp::{filters::BoxedFilter, header::headers_cloned, Filter, Reply};
 
-use crate::{authenticate::{authenticate, Authenticate}, database::user::{get_collection, User}, utilities::{generate_id, random_number}};
+use crate::{
+    authenticate::{authenticate, Authenticate},
+    database::user::{get_collection, User},
+    utilities::{generate_id, random_number},
+};
 
 #[derive(Deserialize, Serialize)]
 pub struct Mfa {
     password: Option<String>,
     code: Option<String>,
     continue_token: Option<String>,
-    stage: i8
+    stage: i8,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -29,19 +33,19 @@ pub struct MfaResponse {
     continue_token: Option<String>,
     success: Option<bool>,
     qr: Option<String>,
-    secret: Option<String>
+    secret: Option<String>,
 }
 
 pub struct PendingMfaEnable {
     totp: TOTP,
     secret: String,
     time: u64,
-    user: User
+    user: User,
 }
 
 pub struct PendingMfaDisable {
     user: User,
-    time: u64
+    time: u64,
 }
 
 lazy_static! {
@@ -55,7 +59,7 @@ pub fn route() -> BoxedFilter<(impl Reply,)> {
             warp::path!("user" / "mfa")
                 .and(headers_cloned().and_then(authenticate))
                 .and(warp::body::json())
-                .and_then(handle)
+                .and_then(handle),
         )
         .boxed()
 }
@@ -64,7 +68,9 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
     if let Some(j) = jwt {
         if mfa.stage == 1 {
             let collection = get_collection();
-            let user = collection.find_one(Some(doc! {"id": j.jwt_content.id}), None).await;
+            let user = collection
+                .find_one(Some(doc! {"id": j.jwt_content.id}), None)
+                .await;
             if let Ok(u) = user {
                 if let Some(u) = u {
                     if let Some(password) = mfa.password {
@@ -85,14 +91,14 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                 .expect("Unexpected error: time went backwards");
                             let login_session = PendingMfaDisable {
                                 time: duration.as_secs(),
-                                user: u
+                                user: u,
                             };
                             PENDING_MFA_DISABLES.insert(continue_token.clone(), login_session);
                             let response = MfaResponse {
                                 continue_token: Some(continue_token),
                                 success: None,
                                 qr: None,
-                                secret: None
+                                secret: None,
                             };
                             Ok(warp::reply::with_status(
                                 warp::reply::json(&response),
@@ -101,15 +107,18 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                         } else {
                             let secret = random_number(160);
                             let totp = TOTP::new(
-                                totp_rs::Algorithm::SHA256, 
-                                8, 
-                                1, 
-                                30, 
-                                secret.clone(), 
-                                Some("Nextflow Cloud Technologies".to_string()), 
-                                u.username.clone()
-                            ).expect("Unexpected error: failed to initiate TOTP");
-                            let qr = totp.get_qr().expect("Unexpected error: failed to generate QR code");
+                                totp_rs::Algorithm::SHA256,
+                                8,
+                                1,
+                                30,
+                                secret.clone(),
+                                Some("Nextflow Cloud Technologies".to_string()),
+                                u.username.clone(),
+                            )
+                            .expect("Unexpected error: failed to initiate TOTP");
+                            let qr = totp
+                                .get_qr()
+                                .expect("Unexpected error: failed to generate QR code");
                             let code = base64::encode(secret);
                             let continue_token = generate_id();
                             let duration = SystemTime::now()
@@ -119,7 +128,7 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                 time: duration.as_secs(),
                                 user: u,
                                 secret: code.clone(),
-                                totp
+                                totp,
                             };
                             PENDING_MFA_ENABLES.insert(continue_token.clone(), session);
                             Ok(warp::reply::with_status(
@@ -127,7 +136,7 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                     continue_token: Some(continue_token),
                                     qr: Some(qr),
                                     secret: Some(code),
-                                    success: None
+                                    success: None,
                                 }),
                                 StatusCode::OK,
                             ))
@@ -174,17 +183,26 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                 StatusCode::UNAUTHORIZED,
                             ));
                         }
-                        let current = s.totp.generate_current().expect("Unexpected error: failed to generate code");
+                        let current = s
+                            .totp
+                            .generate_current()
+                            .expect("Unexpected error: failed to generate code");
                         if current == c {
                             let collection = get_collection();
-                            let result = collection.update_one(doc! {
-                                "id": s.user.id.clone(),
-                            }, doc! {
-                                "$set": {
-                                    "mfa_enabled": true,
-                                    "mfa_secret": s.secret.clone()
-                                }
-                            }, None).await;
+                            let result = collection
+                                .update_one(
+                                    doc! {
+                                        "id": s.user.id.clone(),
+                                    },
+                                    doc! {
+                                        "$set": {
+                                            "mfa_enabled": true,
+                                            "mfa_secret": s.secret.clone()
+                                        }
+                                    },
+                                    None,
+                                )
+                                .await;
                             if result.is_ok() {
                                 PENDING_MFA_ENABLES.remove(&ct);
                                 Ok(warp::reply::with_status(
@@ -192,7 +210,7 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                         continue_token: None,
                                         qr: None,
                                         secret: None,
-                                        success: Some(true)
+                                        success: Some(true),
                                     }),
                                     StatusCode::BAD_REQUEST,
                                 ))
@@ -229,25 +247,34 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                 ));
                             }
                             let totp = TOTP::new(
-                                totp_rs::Algorithm::SHA256, 
-                                8, 
-                                1, 
-                                30, 
-                                s.user.mfa_secret.as_ref().unwrap(), 
-                                Some("Nextflow Cloud Technologies".to_string()), 
-                                s.user.id.clone()
-                            ).expect("Unexpected error: failed to initiate TOTP");
-                            let code = totp.generate_current().expect("Unexpected error: failed to generate code");
+                                totp_rs::Algorithm::SHA256,
+                                8,
+                                1,
+                                30,
+                                s.user.mfa_secret.as_ref().unwrap(),
+                                Some("Nextflow Cloud Technologies".to_string()),
+                                s.user.id.clone(),
+                            )
+                            .expect("Unexpected error: failed to initiate TOTP");
+                            let code = totp
+                                .generate_current()
+                                .expect("Unexpected error: failed to generate code");
                             if code == c {
                                 let collection = get_collection();
-                                let result = collection.update_one(doc! {
-                                    "id": s.user.id.clone(),
-                                }, doc! {
-                                    "$set": {
-                                        "mfa_enabled": false,
-                                        "mfa_secret": None::<String>
-                                    }
-                                }, None).await;
+                                let result = collection
+                                    .update_one(
+                                        doc! {
+                                            "id": s.user.id.clone(),
+                                        },
+                                        doc! {
+                                            "$set": {
+                                                "mfa_enabled": false,
+                                                "mfa_secret": None::<String>
+                                            }
+                                        },
+                                        None,
+                                    )
+                                    .await;
                                 if result.is_ok() {
                                     PENDING_MFA_DISABLES.remove(&ct);
                                     Ok(warp::reply::with_status(
@@ -255,7 +282,7 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                             continue_token: None,
                                             qr: None,
                                             secret: None,
-                                            success: Some(true)
+                                            success: Some(true),
                                         }),
                                         StatusCode::BAD_REQUEST,
                                     ))
@@ -311,7 +338,7 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
     } else {
         Ok(warp::reply::with_status(
             warp::reply::json(&MfaError {
-                error: "Authentication error".to_string()
+                error: "Authentication error".to_string(),
             }),
             StatusCode::UNAUTHORIZED,
         ))

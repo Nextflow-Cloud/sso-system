@@ -26,10 +26,7 @@ pub fn route() -> BoxedFilter<(WithStatus<warp::reply::Json>,)> {
     warp::delete()
         .and(
             warp::path("login")
-                .and(
-                    headers_cloned()
-                        .and_then(authenticate),
-                )
+                .and(headers_cloned().and_then(authenticate))
                 .and_then(handle),
         )
         .boxed()
