@@ -30,4 +30,4 @@ jsonwebtoken = "8.1.1"
 lettre = "0.10"
 
 base64 = "0.13.0"
-totp-rs = { version = "2.0.1", features = ["qr"] }
+totp-rs = { version = "3.0.1", features = ["qr"] }
