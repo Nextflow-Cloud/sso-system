@@ -158,13 +158,13 @@ pub async fn handle(jwt: Option<Authenticate>, account_settings: AccountSettings
                                     ));
                                 }
                             }
-                            return Ok(warp::reply::with_status(
+                            Ok(warp::reply::with_status(
                                 warp::reply::json(&AccountSettingsResponse {
                                     success: Some(true),
                                     continue_token: None
                                 }),
                                 StatusCode::OK
-                            ));
+                            ))
                             // TODO: enforce username length limits
                         } else {
                             Ok(warp::reply::with_status(
@@ -310,13 +310,13 @@ pub async fn handle(jwt: Option<Authenticate>, account_settings: AccountSettings
                                 ));
                             }
                         }
-                        return Ok(warp::reply::with_status(
+                        Ok(warp::reply::with_status(
                             warp::reply::json(&AccountSettingsResponse {
                                 success: Some(true),
                                 continue_token: None
                             }),
                             StatusCode::OK
-                        ));
+                        ))
                     } else {
                         Ok(warp::reply::with_status(
                             warp::reply::json(&AccountSettingsError {
@@ -326,12 +326,12 @@ pub async fn handle(jwt: Option<Authenticate>, account_settings: AccountSettings
                         ))
                     }
                 } else {
-                    return Ok(warp::reply::with_status(
+                    Ok(warp::reply::with_status(
                         warp::reply::json(&AccountSettingsError {
                             error: "Invalid session".to_string()
                         }),
                         StatusCode::UNAUTHORIZED
-                    ));
+                    ))
                 }
             } else {
                 Ok(warp::reply::with_status(

@@ -34,8 +34,8 @@ pub fn route() -> BoxedFilter<(impl Reply,)> {
 async fn multipart_form(user_id: String, parts: Vec<Part>) -> Option<HashMap<String, String>> {
     let mut vars: HashMap<String, String> = HashMap::new();
     for p in parts {
-        let field_name = p.name().clone().to_string();
-        let org_filename = p.filename().clone();
+        let field_name = p.name().to_string();
+        let org_filename = p.filename();
         let mut file_extension: Option<String> = None;
         if org_filename.is_some() {
             let content_type = p.content_type().unwrap();
