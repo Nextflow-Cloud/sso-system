@@ -8,8 +8,8 @@ pub mod logout;
 pub mod mfa;
 pub mod profile_settings;
 pub mod register;
-pub mod validate;
 pub mod user;
+pub mod validate;
 
 pub fn routes() -> BoxedFilter<(impl Reply,)> {
     warp::path("api")

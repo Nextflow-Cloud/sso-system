@@ -3,9 +3,18 @@
 use mongodb::bson::doc;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use warp::{filters::BoxedFilter, Reply, reply::{WithStatus, Json}, header::headers_cloned, Filter};
+use warp::{
+    filters::BoxedFilter,
+    header::headers_cloned,
+    reply::{Json, WithStatus},
+    Filter, Reply,
+};
 
-use crate::{database::profile, database::user, authenticate::{Authenticate, authenticate}};
+use crate::{
+    authenticate::{authenticate, Authenticate},
+    database::profile,
+    database::user,
+};
 
 #[derive(Deserialize, Serialize)]
 pub struct UserError {
@@ -28,18 +37,19 @@ pub fn route() -> BoxedFilter<(impl Reply,)> {
     warp::get()
         .and(
             warp::path!("user")
-                .and(
-                    warp::path::param::<String>()
-                        .map(Some)
-                        .or_else(|_| async { Ok::<(Option<String>,), std::convert::Infallible>((None,)) })
-                )
+                .and(warp::path::param::<String>().map(Some).or_else(|_| async {
+                    Ok::<(Option<String>,), std::convert::Infallible>((None,))
+                }))
                 .and(headers_cloned().and_then(authenticate))
-                .and_then(handle)
-            )
+                .and_then(handle),
+        )
         .boxed()
 }
 
-pub async fn handle(user_id: Option<String>, jwt: Option<Authenticate>) -> Result<WithStatus<Json>, warp::Rejection> {
+pub async fn handle(
+    user_id: Option<String>,
+    jwt: Option<Authenticate>,
+) -> Result<WithStatus<Json>, warp::Rejection> {
     // so dude wanna do this together @Queryzi this won't be too hard
     // @Queryzi
 
@@ -47,12 +57,22 @@ pub async fn handle(user_id: Option<String>, jwt: Option<Authenticate>) -> Resul
         if let Some(u) = user_id {
             let collection = user::get_collection();
             let profile_collection = profile::get_collection();
-            let result = collection.find_one(doc! {
-                "id": u.clone()
-            }, None).await;
-            let profile_result = profile_collection.find_one(doc! {
-                "id": u.clone()
-            }, None).await;
+            let result = collection
+                .find_one(
+                    doc! {
+                        "id": u.clone()
+                    },
+                    None,
+                )
+                .await;
+            let profile_result = profile_collection
+                .find_one(
+                    doc! {
+                        "id": u.clone()
+                    },
+                    None,
+                )
+                .await;
             if let Ok(r) = result {
                 if let Some(r) = r {
                     if let Ok(pr) = profile_result {
@@ -65,7 +85,7 @@ pub async fn handle(user_id: Option<String>, jwt: Option<Authenticate>) -> Resul
                                 mfa_enabled: r.mfa_enabled,
                                 public_email: r.public_email,
                                 username: r.username,
-                                website: pr.website
+                                website: pr.website,
                             };
                             Ok(warp::reply::with_status(
                                 warp::reply::json(&response),
@@ -110,12 +130,22 @@ pub async fn handle(user_id: Option<String>, jwt: Option<Authenticate>) -> Resul
         } else {
             let collection = user::get_collection();
             let profile_collection = profile::get_collection();
-            let result = collection.find_one(doc! {
-                "id": j.jwt_content.id.clone()
-            }, None).await;
-            let profile_result = profile_collection.find_one(doc! {
-                "id": j.jwt_content.id.clone()
-            }, None).await;
+            let result = collection
+                .find_one(
+                    doc! {
+                        "id": j.jwt_content.id.clone()
+                    },
+                    None,
+                )
+                .await;
+            let profile_result = profile_collection
+                .find_one(
+                    doc! {
+                        "id": j.jwt_content.id.clone()
+                    },
+                    None,
+                )
+                .await;
             if let Ok(r) = result {
                 if let Some(r) = r {
                     if let Ok(pr) = profile_result {
@@ -128,7 +158,7 @@ pub async fn handle(user_id: Option<String>, jwt: Option<Authenticate>) -> Resul
                                 mfa_enabled: r.mfa_enabled,
                                 public_email: r.public_email,
                                 username: r.username,
-                                website: pr.website
+                                website: pr.website,
                             };
                             Ok(warp::reply::with_status(
                                 warp::reply::json(&response),
@@ -180,9 +210,9 @@ pub async fn handle(user_id: Option<String>, jwt: Option<Authenticate>) -> Resul
             StatusCode::UNAUTHORIZED,
         ))
     }
-    
-    // SO: 
-    // OFFICIAL API LIMITS: 
+
+    // SO:
+    // OFFICIAL API LIMITS:
     // USERNAME: 32
     // PASSWORD: 256
 }
