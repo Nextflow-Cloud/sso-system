@@ -102,6 +102,7 @@ pub async fn handle(register: Register) -> Result<WithStatus<Json>, warp::Reject
                             username: register.username,
                             email_hash: hashed.to_string(),
                             password_hash: password_hash.to_string(),
+                            public_email: false
                         };
                         let insert_result = collection.insert_one(user_document, None).await;
                         if insert_result.is_err() {
