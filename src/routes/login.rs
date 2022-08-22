@@ -168,6 +168,7 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                                     email: l.email.clone(),
                                 };
                                 PENDING_MFAS.insert(continue_token.clone(), pending_mfa);
+                                PENDING_LOGINS.remove(&ct);
                                 let response = LoginResponse {
                                     token: None,
                                     continue_token: Some(continue_token),
@@ -187,6 +188,7 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                                     &EncodingKey::from_secret(JWT_SECRET.as_ref()),
                                 )
                                 .expect("Unexpected error: failed to encode token");
+                                PENDING_LOGINS.remove(&ct);
                                 let response = LoginResponse {
                                     token: Some(token),
                                     continue_token: None,
@@ -282,6 +284,7 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                                 &EncodingKey::from_secret(JWT_SECRET.as_ref()),
                             )
                             .expect("Unexpected error: failed to encode token");
+                            PENDING_MFAS.remove(&ct);
                             let response = LoginResponse {
                                 token: Some(token),
                                 continue_token: None,
