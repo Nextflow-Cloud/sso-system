@@ -1,7 +1,4 @@
-use reqwest::{
-    header::{HeaderMap, HeaderValue},
-    StatusCode,
-};
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use warp::{
     filters::BoxedFilter,
@@ -31,7 +28,6 @@ pub fn route() -> BoxedFilter<(WithStatus<warp::reply::Json>,)> {
             warp::path("login")
                 .and(
                     headers_cloned()
-                        .map(move |headers: HeaderMap<HeaderValue>| headers)
                         .and_then(authenticate),
                 )
                 .and_then(handle),
