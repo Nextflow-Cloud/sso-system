@@ -8,6 +8,7 @@ pub mod register;
 pub mod validate;
 pub mod profile_settings;
 pub mod account_settings;
+pub mod mfa;
 
 pub fn routes() -> BoxedFilter<(impl Reply,)> {
     warp::path("api")
@@ -20,6 +21,7 @@ pub fn routes() -> BoxedFilter<(impl Reply,)> {
                 .or(validate::route())
                 .or(account_settings::route())
                 .or(profile_settings::route())
+                .or(mfa::route())
                 .or(warp::path::end().map(|| {
                     warp::reply::with_status(
                         "I'm a teapot - never gonna give you up",
