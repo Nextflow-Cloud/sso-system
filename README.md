@@ -42,7 +42,7 @@ Currently, all variables are required for intended operation of the server.
 
 After doing so, run `cargo run --release` to build and run the server. It may take a while to build, especially on ARM64 systems.
 
-### Contribute
+## Contribute
 Nextflow Cloud Technologies is committed to open-source software and free use. This means that you are free to view, modify, contribute, and support the project. Making a pull request with something useful is highly encouraged as this project is made possible by contributors like you who support the project.
 
 * `prod`: Most stable branch: used in production [here](https://sso.nextflow.cloud). 
