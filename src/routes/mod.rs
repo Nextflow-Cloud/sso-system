@@ -1,14 +1,14 @@
 use warp::{filters::BoxedFilter, hyper::StatusCode, Filter, Reply};
 
+pub mod account_settings;
 pub mod delete;
 pub mod ip;
 pub mod login;
 pub mod logout;
+pub mod mfa;
+pub mod profile_settings;
 pub mod register;
 pub mod validate;
-pub mod profile_settings;
-pub mod account_settings;
-pub mod mfa;
 
 pub fn routes() -> BoxedFilter<(impl Reply,)> {
     warp::path("api")
