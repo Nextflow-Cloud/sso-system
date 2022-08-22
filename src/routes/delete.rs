@@ -242,6 +242,7 @@ pub async fn handle(
                                         )
                                         .await;
                                     if result.is_ok() {
+                                        PENDING_DELETES.remove(&ct);
                                         let response = DeleteResponse {
                                             success: Some(true),
                                             continue_token: None,
