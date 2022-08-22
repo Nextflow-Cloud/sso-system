@@ -35,7 +35,7 @@ Before running, you should populate the environment variables with the following
 * `MONGODB_URI`: URI pointing to the MongoDB instance or cluster.
 * `MONGODB_DATABASE`: The database to use in MongoDB.
 * `JWT_SECRET`: A 32 byte key to encode JWT tokens.
-* `SALT`: A salt to hash passwords and emails.
+* `SALT`: A Bcrypt salt to hash passwords and emails.
 * `HCAPTCHA_SECRET`: A secret from hCaptcha to verify hCaptcha tokens.
 
 Currently, all variables are required for intended operation of the server.
