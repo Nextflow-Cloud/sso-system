@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 use mongodb::bson::doc;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use totp_rs::TOTP;
+use totp_rs::{TOTP, Secret};
 use warp::{filters::BoxedFilter, header::headers_cloned, Filter, Reply};
 
 use crate::{
@@ -119,11 +119,12 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                             let qr = totp
                                 .get_qr()
                                 .expect("Unexpected error: failed to generate QR code");
-                            let code = base64::encode(secret);
+                            // let code = base64::encode(secret);
                             let continue_token = generate_id();
                             let duration = SystemTime::now()
                                 .duration_since(UNIX_EPOCH)
                                 .expect("Unexpected error: time went backwards");
+                            let code = Secret::Raw(secret.to_vec()).to_encoded().to_string();
                             let session = PendingMfaEnable {
                                 time: duration.as_secs(),
                                 user: u,
