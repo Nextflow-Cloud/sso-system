@@ -252,6 +252,7 @@ pub async fn handle(
                         .duration_since(UNIX_EPOCH)
                         .expect("Unexpected error: time went backwards");
                     if duration.as_secs() - pending_mfa.time > 3600 {
+                        drop(pending_mfa);
                         PENDING_MFAS.remove(&ct);
                         let error = AccountSettingsError {
                             error: "Session expired".to_string(),
@@ -380,6 +381,8 @@ pub async fn handle(
                                 ));
                             }
                         }
+                        drop(pending_mfa);
+                        PENDING_MFAS.remove(&ct);
                         Ok(warp::reply::with_status(
                             warp::reply::json(&AccountSettingsResponse {
                                 success: Some(true),

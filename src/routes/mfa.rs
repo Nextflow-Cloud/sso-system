@@ -174,6 +174,7 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                             .duration_since(UNIX_EPOCH)
                             .expect("Unexpected error: time went backwards");
                         if duration.as_secs() - s.time > 3600 {
+                            drop(s);
                             PENDING_MFA_ENABLES.remove(&ct);
                             let error = MfaError {
                                 error: "Session expired".to_string(),
@@ -204,6 +205,7 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                 )
                                 .await;
                             if result.is_ok() {
+                                drop(s);
                                 PENDING_MFA_ENABLES.remove(&ct);
                                 Ok(warp::reply::with_status(
                                     warp::reply::json(&MfaResponse {
@@ -237,6 +239,7 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                 .duration_since(UNIX_EPOCH)
                                 .expect("Unexpected error: time went backwards");
                             if duration.as_secs() - s.time > 3600 {
+                                drop(s);
                                 PENDING_MFA_DISABLES.remove(&ct);
                                 let error = MfaError {
                                     error: "Session expired".to_string(),
@@ -276,6 +279,7 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                     )
                                     .await;
                                 if result.is_ok() {
+                                    drop(s);
                                     PENDING_MFA_DISABLES.remove(&ct);
                                     Ok(warp::reply::with_status(
                                         warp::reply::json(&MfaResponse {

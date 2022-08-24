@@ -145,6 +145,7 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                         .duration_since(UNIX_EPOCH)
                         .expect("Unexpected error: time went backwards");
                     if duration.as_secs() - l.time > 3600 {
+                        drop(l);
                         PENDING_LOGINS.remove(&ct);
                         let error = LoginError {
                             error: "Session expired".to_string(),
@@ -168,6 +169,7 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                                     email: l.email.clone(),
                                 };
                                 PENDING_MFAS.insert(continue_token.clone(), pending_mfa);
+                                drop(l);
                                 PENDING_LOGINS.remove(&ct);
                                 let response = LoginResponse {
                                     token: None,
@@ -188,6 +190,7 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                                     &EncodingKey::from_secret(JWT_SECRET.as_ref()),
                                 )
                                 .expect("Unexpected error: failed to encode token");
+                                drop(l);
                                 PENDING_LOGINS.remove(&ct);
                                 let response = LoginResponse {
                                     token: Some(token),
@@ -244,6 +247,7 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                         .duration_since(UNIX_EPOCH)
                         .expect("Unexpected error: time went backwards");
                     if duration.as_secs() - m.time > 3600 {
+                        drop(m);
                         PENDING_MFAS.remove(&ct);
                         let error = LoginError {
                             error: "Session expired".to_string(),
@@ -284,6 +288,7 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                                 &EncodingKey::from_secret(JWT_SECRET.as_ref()),
                             )
                             .expect("Unexpected error: failed to encode token");
+                            drop(m);
                             PENDING_MFAS.remove(&ct);
                             let response = LoginResponse {
                                 token: Some(token),
