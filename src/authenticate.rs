@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 // use chrono::{DateTime, Utc};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
@@ -31,10 +33,13 @@ pub async fn authenticate(
 ) -> Result<Option<Authenticate>, Rejection> {
     let jwt = jwt_from_header(&headers);
     if let Some(j) = jwt {
+        let mut validation = Validation::new(Algorithm::HS256);
+        validation.required_spec_claims = HashSet::new();
+        validation.validate_exp = false;
         let decoded = decode::<UserJwt>(
             &j,
             &DecodingKey::from_secret(JWT_SECRET.as_ref()),
-            &Validation::new(Algorithm::HS512),
+            &validation,
         );
         if let Ok(d) = decoded {
             let value = Authenticate {
