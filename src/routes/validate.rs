@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use warp::{
