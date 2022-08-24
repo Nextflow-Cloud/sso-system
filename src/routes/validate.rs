@@ -1,4 +1,6 @@
-use jsonwebtoken::{decode, DecodingKey, Validation};
+use std::collections::HashSet;
+
+use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use warp::{
@@ -36,12 +38,14 @@ pub fn route() -> BoxedFilter<(impl Reply,)> {
         .boxed()
 }
 pub async fn handle(validate: Validate) -> Result<WithStatus<Json>, warp::Rejection> {
+    let mut validation = Validation::new(Algorithm::HS256);
+    validation.required_spec_claims = HashSet::new();
+    validation.validate_exp = false;
     let result = decode::<UserJwt>(
         &validate.token,
         &DecodingKey::from_secret(JWT_SECRET.as_ref()),
-        &Validation::new(jsonwebtoken::Algorithm::HS256),
+        &validation,
     );
-
     if result.is_ok() {
         let response = ValidateResponse { success: true };
         Ok(warp::reply::with_status(

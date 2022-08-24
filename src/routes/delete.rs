@@ -196,6 +196,7 @@ pub async fn handle(
                             .duration_since(UNIX_EPOCH)
                             .expect("Unexpected error: time went backwards");
                         if duration.as_secs() - pd.time > 3600 {
+                            drop(pd);
                             PENDING_DELETES.remove(&ct);
                             let error = DeleteError {
                                 error: "Session expired".to_string(),
@@ -242,6 +243,7 @@ pub async fn handle(
                                         )
                                         .await;
                                     if result.is_ok() {
+                                        drop(pd);
                                         PENDING_DELETES.remove(&ct);
                                         let response = DeleteResponse {
                                             success: Some(true),
