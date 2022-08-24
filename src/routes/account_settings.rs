@@ -58,6 +58,7 @@ pub fn route() -> BoxedFilter<(WithStatus<warp::reply::Json>,)> {
     warp::patch()
         .and(
             warp::path("user")
+                .and(warp::path::end())
                 .and(headers_cloned().and_then(authenticate))
                 .and(warp::body::json())
                 .and_then(handle),
