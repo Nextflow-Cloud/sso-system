@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 use mongodb::bson::doc;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use totp_rs::{Algorithm, TOTP};
+use totp_rs::{Algorithm, TOTP, Secret};
 use warp::{
     filters::BoxedFilter,
     header::headers_cloned,
@@ -262,12 +262,13 @@ pub async fn handle(
                             StatusCode::UNAUTHORIZED,
                         ))
                     } else if let Some(code) = account_settings.code {
+                        let secret = Secret::Encoded(pending_mfa.user.mfa_secret.clone().unwrap());
                         let totp = TOTP::new(
                             Algorithm::SHA256,
                             8,
                             1,
                             30,
-                            pending_mfa.user.mfa_secret.as_ref().unwrap(),
+                            secret.to_bytes().unwrap(),
                             Some("Nextflow Cloud Technologies".to_string()),
                             pending_mfa.user.id.clone(),
                         )

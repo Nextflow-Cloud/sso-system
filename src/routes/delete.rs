@@ -9,7 +9,7 @@ use reqwest::{
     StatusCode,
 };
 use serde::{Deserialize, Serialize};
-use totp_rs::TOTP;
+use totp_rs::{TOTP, Secret};
 use warp::{
     filters::BoxedFilter,
     header::headers_cloned,
@@ -206,13 +206,13 @@ pub async fn handle(
                                 StatusCode::UNAUTHORIZED,
                             ))
                         } else {
-                            let temp = Some(pd.mfa_secret.clone());
+                            let secret = Secret::Encoded(pd.mfa_secret.clone());
                             let totp = TOTP::new(
                                 totp_rs::Algorithm::SHA256,
                                 8,
                                 1,
                                 30,
-                                temp.as_ref().unwrap(),
+                                secret.to_bytes().unwrap(),
                                 Some("Nextflow Cloud Technologies".to_string()),
                                 pd.id.clone(),
                             )

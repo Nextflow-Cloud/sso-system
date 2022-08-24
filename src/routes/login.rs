@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 use mongodb::bson::doc;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
-use totp_rs::{Algorithm, TOTP};
+use totp_rs::{Algorithm, TOTP, Secret};
 use warp::{
     filters::BoxedFilter,
     hyper::StatusCode,
@@ -257,12 +257,13 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                             StatusCode::UNAUTHORIZED,
                         ))
                     } else if let Some(c) = login.code {
+                        let secret = Secret::Encoded(m.user.mfa_secret.clone().unwrap());
                         let totp = TOTP::new(
                             Algorithm::SHA256,
                             8,
                             1,
                             30,
-                            m.user.mfa_secret.as_ref().unwrap(),
+                            secret.to_bytes().unwrap(),
                             Some("Nextflow Cloud Technologies".to_string()),
                             m.email.clone(),
                         )
