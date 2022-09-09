@@ -1,5 +1,6 @@
 use aes_gcm::{aead::Aead, Aes256Gcm, Nonce};
 use rand::{rngs::StdRng, Rng, SeedableRng};
+use std::fmt::Write;
 
 pub fn encrypt(buffer: Vec<u8>, encrypt: Option<Aes256Gcm>) -> Vec<u8> {
     if let Some(e) = encrypt {
@@ -38,34 +39,11 @@ pub fn random_number(size: usize) -> Vec<u8> {
     result
 }
 
-pub fn generate(random: fn(usize) -> Vec<u8>, alphabet: &[char], size: usize) -> String {
-    assert!(
-        alphabet.len() <= u8::max_value() as usize,
-        "The alphabet cannot be longer than a `u8` (to comply with the `random` function)"
-    );
-    let mask = alphabet.len().next_power_of_two() - 1;
-    let step: usize = 8 * size / 5;
-    let mut id = String::with_capacity(size);
-    loop {
-        let bytes = random(step);
-        for &byte in &bytes {
-            let byte = byte as usize & mask;
-            if alphabet.len() > byte {
-                id.push(alphabet[byte]);
-                if id.len() == size {
-                    return id;
-                }
-            }
-        }
-    }
-}
-
 pub fn generate_id() -> String {
-    generate(
-        random_number,
-        &[
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
-        ],
-        32,
-    )
+    let length = 32;
+    let mut s = String::with_capacity(2 * length);
+    for byte in random_number(length) {
+        write!(s, "{:02X}", byte).expect("Unable to write to string");
+    }
+    s
 }
