@@ -8,10 +8,9 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use totp_rs::{Algorithm, TOTP, Secret};
 use warp::{
-    filters::BoxedFilter,
     header::headers_cloned,
     reply::{Json, WithStatus},
-    Filter,
+    Filter, Rejection,
 };
 
 use crate::{
@@ -54,7 +53,7 @@ lazy_static! {
     pub static ref PENDING_MFAS: DashMap<String, PendingMfa> = DashMap::new();
 }
 
-pub fn route() -> BoxedFilter<(WithStatus<warp::reply::Json>,)> {
+pub fn route() -> impl Filter<Extract = (WithStatus<warp::reply::Json>,), Error = Rejection> + Clone {
     warp::patch()
         .and(
             warp::path("user")

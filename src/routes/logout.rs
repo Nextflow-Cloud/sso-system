@@ -1,10 +1,9 @@
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use warp::{
-    filters::BoxedFilter,
     header::headers_cloned,
     reply::{Json, WithStatus},
-    Filter,
+    Filter, Rejection,
 };
 
 use crate::{
@@ -22,14 +21,13 @@ pub struct LogoutError {
     error: String,
 }
 
-pub fn route() -> BoxedFilter<(WithStatus<warp::reply::Json>,)> {
+pub fn route() -> impl Filter<Extract = (WithStatus<warp::reply::Json>,), Error = Rejection> + Clone {
     warp::delete()
         .and(
             warp::path("login")
                 .and(headers_cloned().and_then(authenticate))
                 .and_then(handle),
         )
-        .boxed()
 }
 
 pub async fn handle(jwt: Option<Authenticate>) -> Result<WithStatus<Json>, warp::Rejection> {

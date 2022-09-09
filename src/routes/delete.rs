@@ -11,7 +11,6 @@ use reqwest::{
 use serde::{Deserialize, Serialize};
 use totp_rs::{TOTP, Secret};
 use warp::{
-    filters::BoxedFilter,
     header::headers_cloned,
     reply::{Json, WithStatus},
     Filter, Rejection,
@@ -45,7 +44,7 @@ pub struct DeleteResponse {
     continue_token: Option<String>,
 }
 
-pub fn route() -> BoxedFilter<(WithStatus<warp::reply::Json>,)> {
+pub fn route() -> impl Filter<Extract = (WithStatus<warp::reply::Json>,), Error = Rejection> + Clone {
     warp::delete()
         .and(
             warp::path("user")
@@ -57,7 +56,6 @@ pub fn route() -> BoxedFilter<(WithStatus<warp::reply::Json>,)> {
                 .and(warp::body::json())
                 .and_then(handle),
         )
-        .boxed()
 }
 
 pub struct PendingDelete {

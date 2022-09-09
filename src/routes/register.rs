@@ -5,10 +5,9 @@ use mongodb::bson::doc;
 use reqwest;
 use serde::{Deserialize, Serialize};
 use warp::{
-    filters::BoxedFilter,
     hyper::StatusCode,
     reply::{Json, WithStatus},
-    Filter, Reply,
+    Filter, Reply, Rejection,
 };
 
 use crate::{
@@ -47,10 +46,9 @@ pub struct HCaptchaResponse {
     error_codes: Option<Vec<String>>,
 }
 
-pub fn route() -> BoxedFilter<(impl Reply,)> {
+pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::post()
         .and(warp::path("user").and(warp::body::json()).and_then(handle))
-        .boxed()
 }
 
 pub async fn handle(register: Register) -> Result<WithStatus<Json>, warp::Rejection> {

@@ -1,4 +1,4 @@
-use warp::{filters::BoxedFilter, hyper::StatusCode, Filter, Reply};
+use warp::{hyper::StatusCode, Filter, Reply, Rejection};
 
 pub mod account_settings;
 pub mod delete;
@@ -11,7 +11,7 @@ pub mod register;
 pub mod user;
 pub mod validate;
 
-pub fn routes() -> BoxedFilter<(impl Reply,)> {
+pub fn routes() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::path("api")
         .and(
             ip::route()
@@ -33,5 +33,4 @@ pub fn routes() -> BoxedFilter<(impl Reply,)> {
         )
         .or(warp::fs::dir("./bundle"))
         .or(warp::fs::file("./bundle/index.html"))
-        .boxed()
 }

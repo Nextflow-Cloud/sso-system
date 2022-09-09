@@ -4,10 +4,9 @@ use mongodb::bson::doc;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use warp::{
-    filters::BoxedFilter,
     header::headers_cloned,
     reply::{Json, WithStatus},
-    Filter, Reply,
+    Filter, Reply, Rejection,
 };
 
 use crate::{
@@ -33,7 +32,7 @@ pub struct UserResponse {
     avatar: String,
 }
 
-pub fn route() -> BoxedFilter<(impl Reply,)> {
+pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::get()
         .and(
             warp::path!("user")
@@ -43,7 +42,6 @@ pub fn route() -> BoxedFilter<(impl Reply,)> {
                 .and(headers_cloned().and_then(authenticate))
                 .and_then(handle),
         )
-        .boxed()
 }
 
 pub async fn handle(

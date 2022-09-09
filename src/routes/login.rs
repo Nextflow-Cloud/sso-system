@@ -8,10 +8,9 @@ use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 use totp_rs::{Algorithm, TOTP, Secret};
 use warp::{
-    filters::BoxedFilter,
     hyper::StatusCode,
     reply::{Json, WithStatus},
-    Filter, Reply,
+    Filter, Reply, Rejection,
 };
 
 use crate::{
@@ -64,10 +63,9 @@ lazy_static! {
     pub static ref PENDING_MFAS: DashMap<String, PendingMfa> = DashMap::new();
 }
 
-pub fn route() -> BoxedFilter<(impl Reply,)> {
+pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::post()
         .and(warp::path("login").and(warp::body::json()).and_then(handle))
-        .boxed()
 }
 
 pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {

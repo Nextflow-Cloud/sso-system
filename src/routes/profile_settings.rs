@@ -6,11 +6,10 @@ use mongodb::bson::doc;
 use reqwest::{header::HeaderValue, StatusCode};
 use serde::{Deserialize, Serialize};
 use warp::{
-    filters::BoxedFilter,
     header::headers_cloned,
     multipart::{FormData, Part},
     reply::{Json, WithStatus},
-    Error, Filter, Reply,
+    Error, Filter, Reply, Rejection,
 };
 
 use crate::{
@@ -28,7 +27,7 @@ pub struct ProfileSettingsResponse {
     success: bool,
 }
 
-pub fn route() -> BoxedFilter<(impl Reply,)> {
+pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::patch()
         .and(
             warp::path!("user" / "profile")
@@ -37,7 +36,6 @@ pub fn route() -> BoxedFilter<(impl Reply,)> {
                 .and(warp::multipart::form().max_length(8_000_000))
                 .and_then(handle),
         )
-        .boxed()
 }
 
 async fn multipart_form(user_id: String, parts: Vec<Part>) -> Option<HashMap<String, String>> {

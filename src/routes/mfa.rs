@@ -7,7 +7,7 @@ use mongodb::bson::doc;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use totp_rs::{TOTP, Secret};
-use warp::{filters::BoxedFilter, header::headers_cloned, Filter, Reply};
+use warp::{header::headers_cloned, Filter, Reply, Rejection};
 
 use crate::{
     authenticate::{authenticate, Authenticate},
@@ -53,7 +53,7 @@ lazy_static! {
     pub static ref PENDING_MFA_DISABLES: DashMap<String, PendingMfaDisable> = DashMap::new();
 }
 
-pub fn route() -> BoxedFilter<(impl Reply,)> {
+pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::patch()
         .and(
             warp::path!("user" / "mfa")
