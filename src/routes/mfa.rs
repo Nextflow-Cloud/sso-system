@@ -260,10 +260,10 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                 disable_session.user.id.clone(),
                             )
                             .expect("Unexpected error: failed to initiate TOTP");
-                            let code = totp
+                            let current = totp
                                 .generate_current()
                                 .expect("Unexpected error: failed to generate code");
-                            if code == code {
+                            if current == code {
                                 let collection = get_collection();
                                 let result = collection
                                     .update_one(
