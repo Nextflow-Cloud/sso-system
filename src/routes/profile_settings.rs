@@ -6,11 +6,10 @@ use mongodb::bson::doc;
 use reqwest::{header::HeaderValue, StatusCode};
 use serde::{Deserialize, Serialize};
 use warp::{
-    filters::BoxedFilter,
     header::headers_cloned,
     multipart::{FormData, Part},
     reply::{Json, WithStatus},
-    Error, Filter, Reply,
+    Error, Filter, Reply, Rejection,
 };
 
 use crate::{
@@ -28,7 +27,7 @@ pub struct ProfileSettingsResponse {
     success: bool,
 }
 
-pub fn route() -> BoxedFilter<(impl Reply,)> {
+pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::patch()
         .and(
             warp::path!("user" / "profile")
@@ -37,7 +36,6 @@ pub fn route() -> BoxedFilter<(impl Reply,)> {
                 .and(warp::multipart::form().max_length(8_000_000))
                 .and_then(handle),
         )
-        .boxed()
 }
 
 async fn multipart_form(user_id: String, parts: Vec<Part>) -> Option<HashMap<String, String>> {
@@ -96,7 +94,7 @@ pub async fn handle(
     content_type: HeaderValue,
     form_data: FormData,
 ) -> Result<WithStatus<Json>, warp::Rejection> {
-    if let Some(j) = jwt {
+    if let Some(jwt) = jwt {
         // Upload avatar along with other form data
         if !content_type
             .to_str()
@@ -112,13 +110,13 @@ pub async fn handle(
             ));
         }
         let parts: Result<Vec<Part>, Error> = form_data.try_collect().await;
-        if let Ok(p) = parts {
-            let form = multipart_form(j.jwt_content.id.clone(), p)
+        if let Ok(parts) = parts {
+            let form = multipart_form(jwt.jwt_content.id.clone(), parts)
                 .await
                 .expect("Unexpected error: unable to read form data");
             let collection = get_collection();
             let existing_profile = collection
-                .find_one(doc! {"id": j.jwt_content.id.clone()}, None)
+                .find_one(doc! {"id": jwt.jwt_content.id.clone()}, None)
                 .await;
             if let Ok(profile) = existing_profile {
                 if profile.is_none() {
@@ -132,7 +130,7 @@ pub async fn handle(
                 }
                 let profile = profile.unwrap();
                 let result = collection.update_one(
-                    doc! {"id": j.jwt_content.id},
+                    doc! {"id": jwt.jwt_content.id},
                     doc! {
                         "$set": {
                             "display_name": form.get("display_name").unwrap_or(&profile.display_name),

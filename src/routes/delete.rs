@@ -11,7 +11,6 @@ use reqwest::{
 use serde::{Deserialize, Serialize};
 use totp_rs::{TOTP, Secret};
 use warp::{
-    filters::BoxedFilter,
     header::headers_cloned,
     reply::{Json, WithStatus},
     Filter, Rejection,
@@ -45,7 +44,7 @@ pub struct DeleteResponse {
     continue_token: Option<String>,
 }
 
-pub fn route() -> BoxedFilter<(WithStatus<warp::reply::Json>,)> {
+pub fn route() -> impl Filter<Extract = (WithStatus<warp::reply::Json>,), Error = Rejection> + Clone {
     warp::delete()
         .and(
             warp::path("user")
@@ -57,7 +56,6 @@ pub fn route() -> BoxedFilter<(WithStatus<warp::reply::Json>,)> {
                 .and(warp::body::json())
                 .and_then(handle),
         )
-        .boxed()
 }
 
 pub struct PendingDelete {
@@ -74,31 +72,31 @@ pub async fn handle(
     jwt: Option<Authenticate>,
     delete_user: Delete,
 ) -> Result<WithStatus<Json>, Rejection> {
-    if let Some(j) = jwt {
+    if let Some(jwt) = jwt {
         if delete_user.stage == 1 {
-            if let Some(p) = delete_user.password {
+            if let Some(password) = delete_user.password {
                 let collection = user::get_collection();
                 let user = collection
                     .find_one(
                         doc! {
-                            "id": j.jwt_content.id.clone()
+                            "id": jwt.jwt_content.id.clone()
                         },
                         None,
                     )
                     .await;
-                if let Ok(r) = user {
-                    if let Some(u) = r {
-                        let verified = verify(p, &u.password_hash)
+                if let Ok(user) = user {
+                    if let Some(user) = user {
+                        let verified = verify(password, &user.password_hash)
                             .expect("Unexpected error: failed to verify password");
                         if verified {
-                            if u.mfa_enabled {
+                            if user.mfa_enabled {
                                 let continue_token = generate_id();
                                 let duration = SystemTime::now()
                                     .duration_since(UNIX_EPOCH)
                                     .expect("Unexpected error: time went backwards");
                                 let delete_session = PendingDelete {
-                                    id: j.jwt_content.id,
-                                    mfa_secret: u.mfa_secret.unwrap(),
+                                    id: jwt.jwt_content.id,
+                                    mfa_secret: user.mfa_secret.unwrap(),
                                     time: duration.as_secs(),
                                 };
                                 PENDING_DELETES.insert(continue_token.clone(), delete_session);
@@ -113,12 +111,12 @@ pub async fn handle(
                             } else {
                                 let blacklist = blacklist::get_collection();
                                 let blacklist_result =
-                                    blacklist.insert_one(Blacklist { token: j.jwt }, None).await;
+                                    blacklist.insert_one(Blacklist { token: jwt.jwt }, None).await;
                                 if blacklist_result.is_ok() {
                                     let result = collection
                                         .delete_one(
                                             doc! {
-                                                "id": j.jwt_content.id
+                                                "id": jwt.jwt_content.id
                                             },
                                             None,
                                         )
@@ -191,12 +189,12 @@ pub async fn handle(
             if let Some(ct) = delete_user.continue_token {
                 if let Some(c) = delete_user.code {
                     let pending_delete = PENDING_DELETES.get(&ct);
-                    if let Some(pd) = pending_delete {
+                    if let Some(pending_delete) = pending_delete {
                         let duration = SystemTime::now()
                             .duration_since(UNIX_EPOCH)
                             .expect("Unexpected error: time went backwards");
-                        if duration.as_secs() - pd.time > 3600 {
-                            drop(pd);
+                        if duration.as_secs() - pending_delete.time > 3600 {
+                            drop(pending_delete);
                             PENDING_DELETES.remove(&ct);
                             let error = DeleteError {
                                 error: "Session expired".to_string(),
@@ -206,7 +204,7 @@ pub async fn handle(
                                 StatusCode::UNAUTHORIZED,
                             ))
                         } else {
-                            let secret = Secret::Encoded(pd.mfa_secret.clone());
+                            let secret = Secret::Encoded(pending_delete.mfa_secret.clone());
                             let totp = TOTP::new(
                                 totp_rs::Algorithm::SHA256,
                                 8,
@@ -214,7 +212,7 @@ pub async fn handle(
                                 30,
                                 secret.to_bytes().unwrap(),
                                 Some("Nextflow Cloud Technologies".to_string()),
-                                pd.id.clone(),
+                                pending_delete.id.clone(),
                             )
                             .expect("Unexpected error: could not create TOTP instance");
                             let current_code = totp
@@ -231,19 +229,19 @@ pub async fn handle(
                             } else {
                                 let blacklist = blacklist::get_collection();
                                 let blacklist_result =
-                                    blacklist.insert_one(Blacklist { token: j.jwt }, None).await;
+                                    blacklist.insert_one(Blacklist { token: jwt.jwt }, None).await;
                                 if blacklist_result.is_ok() {
                                     let collection = user::get_collection();
                                     let result = collection
                                         .delete_one(
                                             doc! {
-                                                "id": j.jwt_content.id
+                                                "id": jwt.jwt_content.id
                                             },
                                             None,
                                         )
                                         .await;
                                     if result.is_ok() {
-                                        drop(pd);
+                                        drop(pending_delete);
                                         PENDING_DELETES.remove(&ct);
                                         let response = DeleteResponse {
                                             success: Some(true),

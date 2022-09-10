@@ -1,13 +1,10 @@
-// coming soon™ - @Queryzi 2022
-
 use mongodb::bson::doc;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use warp::{
-    filters::BoxedFilter,
     header::headers_cloned,
     reply::{Json, WithStatus},
-    Filter, Reply,
+    Filter, Reply, Rejection,
 };
 
 use crate::{
@@ -33,7 +30,7 @@ pub struct UserResponse {
     avatar: String,
 }
 
-pub fn route() -> BoxedFilter<(impl Reply,)> {
+pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::get()
         .and(
             warp::path!("user")
@@ -43,24 +40,20 @@ pub fn route() -> BoxedFilter<(impl Reply,)> {
                 .and(headers_cloned().and_then(authenticate))
                 .and_then(handle),
         )
-        .boxed()
 }
 
 pub async fn handle(
     user_id: Option<String>,
     jwt: Option<Authenticate>,
 ) -> Result<WithStatus<Json>, warp::Rejection> {
-    // so dude wanna do this together @Queryzi this won't be too hard
-    // @Queryzi
-
-    if let Some(j) = jwt {
-        if let Some(u) = user_id {
+    if let Some(jwt) = jwt {
+        if let Some(user_id) = user_id {
             let collection = user::get_collection();
             let profile_collection = profile::get_collection();
             let result = collection
                 .find_one(
                     doc! {
-                        "id": u.clone()
+                        "id": user_id.clone()
                     },
                     None,
                 )
@@ -68,24 +61,24 @@ pub async fn handle(
             let profile_result = profile_collection
                 .find_one(
                     doc! {
-                        "id": u.clone()
+                        "id": user_id.clone()
                     },
                     None,
                 )
                 .await;
-            if let Ok(r) = result {
-                if let Some(r) = r {
-                    if let Ok(pr) = profile_result {
-                        if let Some(pr) = pr {
+            if let Ok(result) = result {
+                if let Some(result) = result {
+                    if let Ok(profile_result) = profile_result {
+                        if let Some(profile_result) = profile_result {
                             let response = UserResponse {
-                                avatar: pr.avatar,
-                                description: pr.description,
-                                display_name: pr.display_name,
-                                id: u,
-                                mfa_enabled: r.mfa_enabled,
-                                public_email: r.public_email,
-                                username: r.username,
-                                website: pr.website,
+                                avatar: profile_result.avatar,
+                                description: profile_result.description,
+                                display_name: profile_result.display_name,
+                                id: user_id,
+                                mfa_enabled: result.mfa_enabled,
+                                public_email: result.public_email,
+                                username: result.username,
+                                website: profile_result.website,
                             };
                             Ok(warp::reply::with_status(
                                 warp::reply::json(&response),
@@ -133,7 +126,7 @@ pub async fn handle(
             let result = collection
                 .find_one(
                     doc! {
-                        "id": j.jwt_content.id.clone()
+                        "id": jwt.jwt_content.id.clone()
                     },
                     None,
                 )
@@ -141,24 +134,24 @@ pub async fn handle(
             let profile_result = profile_collection
                 .find_one(
                     doc! {
-                        "id": j.jwt_content.id.clone()
+                        "id": jwt.jwt_content.id.clone()
                     },
                     None,
                 )
                 .await;
-            if let Ok(r) = result {
-                if let Some(r) = r {
-                    if let Ok(pr) = profile_result {
-                        if let Some(pr) = pr {
+            if let Ok(result) = result {
+                if let Some(result) = result {
+                    if let Ok(profile_result) = profile_result {
+                        if let Some(profile_result) = profile_result {
                             let response = UserResponse {
-                                avatar: pr.avatar,
-                                description: pr.description,
-                                display_name: pr.display_name,
-                                id: j.jwt_content.id,
-                                mfa_enabled: r.mfa_enabled,
-                                public_email: r.public_email,
-                                username: r.username,
-                                website: pr.website,
+                                avatar: profile_result.avatar,
+                                description: profile_result.description,
+                                display_name: profile_result.display_name,
+                                id: jwt.jwt_content.id,
+                                mfa_enabled: result.mfa_enabled,
+                                public_email: result.public_email,
+                                username: result.username,
+                                website: profile_result.website,
                             };
                             Ok(warp::reply::with_status(
                                 warp::reply::json(&response),
@@ -211,7 +204,6 @@ pub async fn handle(
         ))
     }
 
-    // SO:
     // OFFICIAL API LIMITS:
     // USERNAME: 32
     // PASSWORD: 256

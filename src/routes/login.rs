@@ -8,10 +8,9 @@ use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 use totp_rs::{Algorithm, TOTP, Secret};
 use warp::{
-    filters::BoxedFilter,
     hyper::StatusCode,
     reply::{Json, WithStatus},
-    Filter, Reply,
+    Filter, Reply, Rejection,
 };
 
 use crate::{
@@ -64,10 +63,9 @@ lazy_static! {
     pub static ref PENDING_MFAS: DashMap<String, PendingMfa> = DashMap::new();
 }
 
-pub fn route() -> BoxedFilter<(impl Reply,)> {
+pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::post()
         .and(warp::path("login").and(warp::body::json()).and_then(handle))
-        .boxed()
 }
 
 pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
@@ -76,9 +74,9 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
             let collection = crate::database::user::get_collection();
             let salt_bytes =
                 decode(&*SALT).expect("Unexpected error: failed to convert salt to bytes");
-            if let Some(e) = login.email {
+            if let Some(email) = login.email {
                 let hashed =
-                    hash_with_salt(e.clone(), DEFAULT_COST, vec_to_array::<u8, 16>(salt_bytes))
+                    hash_with_salt(email.clone(), DEFAULT_COST, vec_to_array::<u8, 16>(salt_bytes))
                         .expect("Unexpected error: failed to hash");
                 let result = collection
                     .find_one(
@@ -88,14 +86,14 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                         None,
                     )
                     .await;
-                if let Ok(u) = result {
-                    if let Some(user_exists) = u {
+                if let Ok(user) = result {
+                    if let Some(user_exists) = user {
                         let continue_token = generate_id();
                         let duration = SystemTime::now()
                             .duration_since(UNIX_EPOCH)
                             .expect("Unexpected error: time went backwards");
                         let login_session = PendingLogin {
-                            email: e,
+                            email,
                             time: duration.as_secs(),
                             user: user_exists,
                         };
@@ -138,15 +136,15 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
             }
         }
         2 => {
-            if let Some(ct) = login.continue_token {
-                let pending_login = PENDING_LOGINS.get(&ct);
-                if let Some(l) = pending_login {
+            if let Some(continue_token) = login.continue_token {
+                let pending_login = PENDING_LOGINS.get(&continue_token);
+                if let Some(pending_login) = pending_login {
                     let duration = SystemTime::now()
                         .duration_since(UNIX_EPOCH)
                         .expect("Unexpected error: time went backwards");
-                    if duration.as_secs() - l.time > 3600 {
-                        drop(l);
-                        PENDING_LOGINS.remove(&ct);
+                    if duration.as_secs() - pending_login.time > 3600 {
+                        drop(pending_login);
+                        PENDING_LOGINS.remove(&continue_token);
                         let error = LoginError {
                             error: "Session expired".to_string(),
                         };
@@ -154,23 +152,23 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                             warp::reply::json(&error),
                             StatusCode::UNAUTHORIZED,
                         ))
-                    } else if let Some(p) = login.password {
-                        let verified = verify(p, &l.user.password_hash)
+                    } else if let Some(password) = login.password {
+                        let verified = verify(password, &pending_login.user.password_hash)
                             .expect("Unexpected error: failed to verify password");
                         if verified {
-                            if l.user.mfa_enabled {
+                            if pending_login.user.mfa_enabled {
                                 let continue_token = generate_id();
                                 let duration = SystemTime::now()
                                     .duration_since(UNIX_EPOCH)
                                     .expect("Unexpected error: time went backwards");
                                 let pending_mfa = PendingMfa {
                                     time: duration.as_secs(),
-                                    user: l.user.clone(),
-                                    email: l.email.clone(),
+                                    user: pending_login.user.clone(),
+                                    email: pending_login.email.clone(),
                                 };
                                 PENDING_MFAS.insert(continue_token.clone(), pending_mfa);
-                                drop(l);
-                                PENDING_LOGINS.remove(&ct);
+                                drop(pending_login);
+                                PENDING_LOGINS.remove(&continue_token);
                                 let response = LoginResponse {
                                     token: None,
                                     continue_token: Some(continue_token),
@@ -182,7 +180,7 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                                 ))
                             } else {
                                 let jwt_object = UserJwt {
-                                    id: l.user.id.clone(),
+                                    id: pending_login.user.id.clone(),
                                 };
                                 let token = encode(
                                     &Header::default(),
@@ -190,8 +188,8 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                                     &EncodingKey::from_secret(JWT_SECRET.as_ref()),
                                 )
                                 .expect("Unexpected error: failed to encode token");
-                                drop(l);
-                                PENDING_LOGINS.remove(&ct);
+                                drop(pending_login);
+                                PENDING_LOGINS.remove(&continue_token);
                                 let response = LoginResponse {
                                     token: Some(token),
                                     continue_token: None,
@@ -240,15 +238,15 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
             }
         }
         3 => {
-            if let Some(ct) = login.continue_token {
-                let mfa_session = PENDING_MFAS.get(&ct);
-                if let Some(m) = mfa_session {
+            if let Some(continue_token) = login.continue_token {
+                let mfa_session = PENDING_MFAS.get(&continue_token);
+                if let Some(mfa_session) = mfa_session {
                     let duration = SystemTime::now()
                         .duration_since(UNIX_EPOCH)
                         .expect("Unexpected error: time went backwards");
-                    if duration.as_secs() - m.time > 3600 {
-                        drop(m);
-                        PENDING_MFAS.remove(&ct);
+                    if duration.as_secs() - mfa_session.time > 3600 {
+                        drop(mfa_session);
+                        PENDING_MFAS.remove(&continue_token);
                         let error = LoginError {
                             error: "Session expired".to_string(),
                         };
@@ -256,8 +254,8 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                             warp::reply::json(&error),
                             StatusCode::UNAUTHORIZED,
                         ))
-                    } else if let Some(c) = login.code {
-                        let secret = Secret::Encoded(m.user.mfa_secret.clone().unwrap());
+                    } else if let Some(code) = login.code {
+                        let secret = Secret::Encoded(mfa_session.user.mfa_secret.clone().unwrap());
                         let totp = TOTP::new(
                             Algorithm::SHA256,
                             8,
@@ -265,13 +263,13 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                             30,
                             secret.to_bytes().unwrap(),
                             Some("Nextflow Cloud Technologies".to_string()),
-                            m.email.clone(),
+                            mfa_session.email.clone(),
                         )
                         .expect("Unexpected error: could not create TOTP instance");
                         let current_code = totp
                             .generate_current()
                             .expect("Unexpected error: failed to generate code");
-                        if current_code != c {
+                        if current_code != code {
                             let error = LoginError {
                                 error: "Invalid code".to_string(),
                             };
@@ -281,7 +279,7 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                             ))
                         } else {
                             let jwt_object = UserJwt {
-                                id: m.user.id.clone(),
+                                id: mfa_session.user.id.clone(),
                             };
                             let token = encode(
                                 &Header::default(),
@@ -289,8 +287,8 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                                 &EncodingKey::from_secret(JWT_SECRET.as_ref()),
                             )
                             .expect("Unexpected error: failed to encode token");
-                            drop(m);
-                            PENDING_MFAS.remove(&ct);
+                            drop(mfa_session);
+                            PENDING_MFAS.remove(&continue_token);
                             let response = LoginResponse {
                                 token: Some(token),
                                 continue_token: None,

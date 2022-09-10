@@ -7,7 +7,7 @@ use mongodb::bson::doc;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use totp_rs::{TOTP, Secret};
-use warp::{filters::BoxedFilter, header::headers_cloned, Filter, Reply};
+use warp::{header::headers_cloned, Filter, Reply, Rejection};
 
 use crate::{
     authenticate::{authenticate, Authenticate},
@@ -53,7 +53,7 @@ lazy_static! {
     pub static ref PENDING_MFA_DISABLES: DashMap<String, PendingMfaDisable> = DashMap::new();
 }
 
-pub fn route() -> BoxedFilter<(impl Reply,)> {
+pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::patch()
         .and(
             warp::path!("user" / "mfa")
@@ -65,16 +65,16 @@ pub fn route() -> BoxedFilter<(impl Reply,)> {
 }
 
 pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, warp::Rejection> {
-    if let Some(j) = jwt {
+    if let Some(jwt) = jwt {
         if mfa.stage == 1 {
             let collection = get_collection();
             let user = collection
-                .find_one(Some(doc! {"id": j.jwt_content.id}), None)
+                .find_one(Some(doc! {"id": jwt.jwt_content.id}), None)
                 .await;
-            if let Ok(u) = user {
-                if let Some(u) = u {
+            if let Ok(user) = user {
+                if let Some(user) = user {
                     if let Some(password) = mfa.password {
-                        let verified = verify(password, &u.password_hash)
+                        let verified = verify(password, &user.password_hash)
                             .expect("Unexpected error: failed to verify password");
                         if !verified {
                             return Ok(warp::reply::with_status(
@@ -84,14 +84,14 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                 StatusCode::UNAUTHORIZED,
                             ));
                         }
-                        if u.mfa_enabled {
+                        if user.mfa_enabled {
                             let continue_token = generate_id();
                             let duration = SystemTime::now()
                                 .duration_since(UNIX_EPOCH)
                                 .expect("Unexpected error: time went backwards");
                             let login_session = PendingMfaDisable {
                                 time: duration.as_secs(),
-                                user: u,
+                                user,
                             };
                             PENDING_MFA_DISABLES.insert(continue_token.clone(), login_session);
                             let response = MfaResponse {
@@ -113,7 +113,7 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                 30,
                                 secret.clone(),
                                 Some("Nextflow Cloud Technologies".to_string()),
-                                u.username.clone(),
+                                user.username.clone(),
                             )
                             .expect("Unexpected error: failed to initiate TOTP");
                             let qr = totp
@@ -127,7 +127,7 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                             let code = Secret::Raw(secret.to_vec()).to_encoded().to_string();
                             let session = PendingMfaEnable {
                                 time: duration.as_secs(),
-                                user: u,
+                                user,
                                 secret: code.clone(),
                                 totp,
                             };
@@ -167,16 +167,16 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                 ))
             }
         } else if mfa.stage == 2 {
-            if let Some(c) = mfa.code {
-                if let Some(ct) = mfa.continue_token {
-                    let enable_session = PENDING_MFA_ENABLES.get(&ct);
-                    if let Some(s) = enable_session {
+            if let Some(code) = mfa.code {
+                if let Some(continue_token) = mfa.continue_token {
+                    let enable_session = PENDING_MFA_ENABLES.get(&continue_token);
+                    if let Some(enable_session) = enable_session {
                         let duration = SystemTime::now()
                             .duration_since(UNIX_EPOCH)
                             .expect("Unexpected error: time went backwards");
-                        if duration.as_secs() - s.time > 3600 {
-                            drop(s);
-                            PENDING_MFA_ENABLES.remove(&ct);
+                        if duration.as_secs() - enable_session.time > 3600 {
+                            drop(enable_session);
+                            PENDING_MFA_ENABLES.remove(&continue_token);
                             let error = MfaError {
                                 error: "Session expired".to_string(),
                             };
@@ -185,29 +185,29 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                 StatusCode::UNAUTHORIZED,
                             ));
                         }
-                        let current = s
+                        let current = enable_session
                             .totp
                             .generate_current()
                             .expect("Unexpected error: failed to generate code");
-                        if current == c {
+                        if current == code {
                             let collection = get_collection();
                             let result = collection
                                 .update_one(
                                     doc! {
-                                        "id": s.user.id.clone(),
+                                        "id": enable_session.user.id.clone(),
                                     },
                                     doc! {
                                         "$set": {
                                             "mfa_enabled": true,
-                                            "mfa_secret": s.secret.clone()
+                                            "mfa_secret": enable_session.secret.clone()
                                         }
                                     },
                                     None,
                                 )
                                 .await;
                             if result.is_ok() {
-                                drop(s);
-                                PENDING_MFA_ENABLES.remove(&ct);
+                                drop(enable_session);
+                                PENDING_MFA_ENABLES.remove(&continue_token);
                                 Ok(warp::reply::with_status(
                                     warp::reply::json(&MfaResponse {
                                         continue_token: None,
@@ -234,14 +234,14 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                             ))
                         }
                     } else {
-                        let disable_session = PENDING_MFA_DISABLES.get(&ct);
-                        if let Some(s) = disable_session {
+                        let disable_session = PENDING_MFA_DISABLES.get(&continue_token);
+                        if let Some(disable_session) = disable_session {
                             let duration = SystemTime::now()
                                 .duration_since(UNIX_EPOCH)
                                 .expect("Unexpected error: time went backwards");
-                            if duration.as_secs() - s.time > 3600 {
-                                drop(s);
-                                PENDING_MFA_DISABLES.remove(&ct);
+                            if duration.as_secs() - disable_session.time > 3600 {
+                                drop(disable_session);
+                                PENDING_MFA_DISABLES.remove(&continue_token);
                                 let error = MfaError {
                                     error: "Session expired".to_string(),
                                 };
@@ -255,20 +255,20 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                 8,
                                 1,
                                 30,
-                                s.user.mfa_secret.as_ref().unwrap(),
+                                disable_session.user.mfa_secret.as_ref().unwrap(),
                                 Some("Nextflow Cloud Technologies".to_string()),
-                                s.user.id.clone(),
+                                disable_session.user.id.clone(),
                             )
                             .expect("Unexpected error: failed to initiate TOTP");
-                            let code = totp
+                            let current = totp
                                 .generate_current()
                                 .expect("Unexpected error: failed to generate code");
-                            if code == c {
+                            if current == code {
                                 let collection = get_collection();
                                 let result = collection
                                     .update_one(
                                         doc! {
-                                            "id": s.user.id.clone(),
+                                            "id": disable_session.user.id.clone(),
                                         },
                                         doc! {
                                             "$set": {
@@ -280,8 +280,8 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                     )
                                     .await;
                                 if result.is_ok() {
-                                    drop(s);
-                                    PENDING_MFA_DISABLES.remove(&ct);
+                                    drop(disable_session);
+                                    PENDING_MFA_DISABLES.remove(&continue_token);
                                     Ok(warp::reply::with_status(
                                         warp::reply::json(&MfaResponse {
                                             continue_token: None,

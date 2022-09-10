@@ -12,7 +12,7 @@ pub struct Authenticate {
     pub(crate) jwt_content: UserJwt,
 }
 
-fn jwt_from_header(headers: &HeaderMap<HeaderValue>) -> Option<String> {
+fn jwt_from_header(headers: &HeaderMap<HeaderValue>) -> Option<&str> {
     let header = match headers.get(AUTHORIZATION) {
         Some(v) => v,
         None => return None,
@@ -25,7 +25,7 @@ fn jwt_from_header(headers: &HeaderMap<HeaderValue>) -> Option<String> {
     if !auth_header.starts_with(bearer) {
         return None;
     }
-    Some(auth_header.trim_start_matches(bearer).to_owned())
+    Some(auth_header.trim_start_matches(bearer))
 }
 
 pub async fn authenticate(
@@ -37,13 +37,13 @@ pub async fn authenticate(
         validation.required_spec_claims = HashSet::new();
         validation.validate_exp = false;
         let decoded = decode::<UserJwt>(
-            &j,
+            j,
             &DecodingKey::from_secret(JWT_SECRET.as_ref()),
             &validation,
         );
         if let Ok(d) = decoded {
             let value = Authenticate {
-                jwt: j,
+                jwt: j.to_string(),
                 jwt_content: d.claims,
             };
             Ok(Some(value))

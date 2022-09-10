@@ -4,9 +4,8 @@ use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use warp::{
-    filters::BoxedFilter,
     reply::{Json, WithStatus},
-    Filter, Reply,
+    Filter, Reply, Rejection,
 };
 
 use crate::environment::JWT_SECRET;
@@ -28,14 +27,13 @@ pub struct ValidateResponse {
     success: bool,
 }
 
-pub fn route() -> BoxedFilter<(impl Reply,)> {
+pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::post()
         .and(
             warp::path("validate")
                 .and(warp::body::json())
                 .and_then(handle),
         )
-        .boxed()
 }
 pub async fn handle(validate: Validate) -> Result<WithStatus<Json>, warp::Rejection> {
     let mut validation = Validation::new(Algorithm::HS256);
