@@ -61,9 +61,9 @@ pub async fn handle(register: Register) -> Result<WithStatus<Json>, warp::Reject
         ])
         .send()
         .await;
-    if let Ok(r) = result {
-        if r.status() == reqwest::StatusCode::OK {
-            let text = r
+    if let Ok(result) = result {
+        if result.status() == reqwest::StatusCode::OK {
+            let text = result
                 .text()
                 .await
                 .expect("Unexpected error: failed to read response");
@@ -89,8 +89,8 @@ pub async fn handle(register: Register) -> Result<WithStatus<Json>, warp::Reject
                         None,
                     )
                     .await;
-                if let Ok(u) = user {
-                    if u.is_none() {
+                if let Ok(user) = user {
+                    if user.is_none() {
                         let user_id = generate_id();
                         let user_document = User {
                             id: user_id.clone(),

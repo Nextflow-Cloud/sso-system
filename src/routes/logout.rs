@@ -31,9 +31,9 @@ pub fn route() -> impl Filter<Extract = (WithStatus<warp::reply::Json>,), Error 
 }
 
 pub async fn handle(jwt: Option<Authenticate>) -> Result<WithStatus<Json>, warp::Rejection> {
-    if let Some(j) = jwt {
+    if let Some(jwt) = jwt {
         let blacklist = get_collection();
-        let document = Blacklist { token: j.jwt };
+        let document = Blacklist { token: jwt.jwt };
         let result = blacklist.insert_one(document, None).await;
         if result.is_ok() {
             let error = LogoutResponse { success: true };

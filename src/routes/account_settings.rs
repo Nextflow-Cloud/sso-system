@@ -69,24 +69,24 @@ pub async fn handle(
     jwt: Option<Authenticate>,
     account_settings: AccountSettings,
 ) -> Result<WithStatus<Json>, warp::Rejection> {
-    if let Some(j) = jwt {
+    if let Some(jwt) = jwt {
         if account_settings.stage == 1 {
             let user_collection = get_collection();
             let user = user_collection
                 .find_one(
                     doc! {
-                        "id": j.jwt_content.id.clone()
+                        "id": jwt.jwt_content.id.clone()
                     },
                     None,
                 )
                 .await;
-            if let Ok(u) = user {
-                if let Some(u) = u {
+            if let Ok(user) = user {
+                if let Some(user) = user {
                     if let Some(current_password) = account_settings.current_password.clone() {
-                        let verified = verify(current_password, &u.password_hash)
+                        let verified = verify(current_password, &user.password_hash)
                             .expect("Unexpected error: failed to verify password");
                         if verified {
-                            if u.mfa_enabled {
+                            if user.mfa_enabled {
                                 let continue_token = generate_id();
                                 PENDING_MFAS.insert(
                                     continue_token.clone(),
@@ -96,7 +96,7 @@ pub async fn handle(
                                             .unwrap()
                                             .as_secs(),
                                         previous_request: account_settings,
-                                        user: u,
+                                        user,
                                     },
                                 );
                                 return Ok(warp::reply::with_status(
@@ -116,8 +116,8 @@ pub async fn handle(
                                         None,
                                     )
                                     .await;
-                                if let Ok(u) = user {
-                                    if u.is_some() {
+                                if let Ok(user) = user {
+                                    if user.is_some() {
                                         return Ok(warp::reply::with_status(
                                             warp::reply::json(&AccountSettingsError {
                                                 error: "Username already taken".to_string(),
@@ -128,7 +128,7 @@ pub async fn handle(
                                         let update = user_collection
                                             .update_one(
                                                 doc! {
-                                                    "id": j.jwt_content.id.clone()
+                                                    "id": jwt.jwt_content.id.clone()
                                                 },
                                                 doc! {
                                                     "$set": {
@@ -163,7 +163,7 @@ pub async fn handle(
                                 let update_result = user_collection
                                     .update_one(
                                         doc! {
-                                            "id": j.jwt_content.id.clone()
+                                            "id": jwt.jwt_content.id.clone()
                                         },
                                         doc! {
                                             "$set": {
@@ -186,7 +186,7 @@ pub async fn handle(
                                 let update_result = user_collection
                                     .update_one(
                                         doc! {
-                                            "id": j.jwt_content.id
+                                            "id": jwt.jwt_content.id
                                         },
                                         doc! {
                                             "$set": {
@@ -246,14 +246,14 @@ pub async fn handle(
                 ))
             }
         } else if account_settings.stage == 2 {
-            if let Some(ct) = account_settings.continue_token {
-                if let Some(pending_mfa) = PENDING_MFAS.get(&ct) {
+            if let Some(continue_token) = account_settings.continue_token {
+                if let Some(pending_mfa) = PENDING_MFAS.get(&continue_token) {
                     let duration = SystemTime::now()
                         .duration_since(UNIX_EPOCH)
                         .expect("Unexpected error: time went backwards");
                     if duration.as_secs() - pending_mfa.time > 3600 {
                         drop(pending_mfa);
-                        PENDING_MFAS.remove(&ct);
+                        PENDING_MFAS.remove(&continue_token);
                         let error = AccountSettingsError {
                             error: "Session expired".to_string(),
                         };
@@ -294,8 +294,8 @@ pub async fn handle(
                                     None,
                                 )
                                 .await;
-                            if let Ok(u) = user {
-                                if u.is_some() {
+                            if let Ok(user) = user {
+                                if user.is_some() {
                                     return Ok(warp::reply::with_status(
                                         warp::reply::json(&AccountSettingsError {
                                             error: "Username already taken".to_string(),
@@ -306,7 +306,7 @@ pub async fn handle(
                                     let update = get_collection()
                                         .update_one(
                                             doc! {
-                                                "id": j.jwt_content.id.clone()
+                                                "id": jwt.jwt_content.id.clone()
                                             },
                                             doc! {
                                                 "$set": {
@@ -340,7 +340,7 @@ pub async fn handle(
                             let update_result = get_collection()
                                 .update_one(
                                     doc! {
-                                        "id": j.jwt_content.id.clone()
+                                        "id": jwt.jwt_content.id.clone()
                                     },
                                     doc! {
                                         "$set": {
@@ -363,7 +363,7 @@ pub async fn handle(
                             let update_result = get_collection()
                                 .update_one(
                                     doc! {
-                                        "id": j.jwt_content.id
+                                        "id": jwt.jwt_content.id
                                     },
                                     doc! {
                                         "$set": {
@@ -383,7 +383,7 @@ pub async fn handle(
                             }
                         }
                         drop(pending_mfa);
-                        PENDING_MFAS.remove(&ct);
+                        PENDING_MFAS.remove(&continue_token);
                         Ok(warp::reply::with_status(
                             warp::reply::json(&AccountSettingsResponse {
                                 success: Some(true),
