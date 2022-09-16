@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use warp::{
     hyper::StatusCode,
     reply::{Json, WithStatus},
-    Filter, Reply, Rejection,
+    Filter, Rejection, Reply,
 };
 
 use crate::{
@@ -47,8 +47,7 @@ pub struct HCaptchaResponse {
 }
 
 pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    warp::post()
-        .and(warp::path("user").and(warp::body::json()).and_then(handle))
+    warp::post().and(warp::path("user").and(warp::body::json()).and_then(handle))
 }
 
 pub async fn handle(register: Register) -> Result<WithStatus<Json>, warp::Rejection> {

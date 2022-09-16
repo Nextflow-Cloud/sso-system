@@ -5,7 +5,7 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use warp::{
     reply::{Json, WithStatus},
-    Filter, Reply, Rejection,
+    Filter, Rejection, Reply,
 };
 
 use crate::environment::JWT_SECRET;
@@ -28,12 +28,11 @@ pub struct ValidateResponse {
 }
 
 pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    warp::post()
-        .and(
-            warp::path("validate")
-                .and(warp::body::json())
-                .and_then(handle),
-        )
+    warp::post().and(
+        warp::path("validate")
+            .and(warp::body::json())
+            .and_then(handle),
+    )
 }
 pub async fn handle(validate: Validate) -> Result<WithStatus<Json>, warp::Rejection> {
     let mut validation = Validation::new(Algorithm::HS256);

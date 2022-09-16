@@ -6,11 +6,11 @@ use lazy_static::lazy_static;
 use mongodb::bson::doc;
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
-use totp_rs::{Algorithm, TOTP, Secret};
+use totp_rs::{Algorithm, Secret, TOTP};
 use warp::{
     hyper::StatusCode,
     reply::{Json, WithStatus},
-    Filter, Reply, Rejection,
+    Filter, Rejection, Reply,
 };
 
 use crate::{
@@ -64,8 +64,7 @@ lazy_static! {
 }
 
 pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    warp::post()
-        .and(warp::path("login").and(warp::body::json()).and_then(handle))
+    warp::post().and(warp::path("login").and(warp::body::json()).and_then(handle))
 }
 
 pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
@@ -75,9 +74,12 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
             let salt_bytes =
                 decode(&*SALT).expect("Unexpected error: failed to convert salt to bytes");
             if let Some(email) = login.email {
-                let hashed =
-                    hash_with_salt(email.clone(), DEFAULT_COST, vec_to_array::<u8, 16>(salt_bytes))
-                        .expect("Unexpected error: failed to hash");
+                let hashed = hash_with_salt(
+                    email.clone(),
+                    DEFAULT_COST,
+                    vec_to_array::<u8, 16>(salt_bytes),
+                )
+                .expect("Unexpected error: failed to hash");
                 let result = collection
                     .find_one(
                         doc! {

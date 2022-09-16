@@ -9,7 +9,7 @@ use reqwest::{
     StatusCode,
 };
 use serde::{Deserialize, Serialize};
-use totp_rs::{TOTP, Secret};
+use totp_rs::{Secret, TOTP};
 use warp::{
     header::headers_cloned,
     reply::{Json, WithStatus},
@@ -44,18 +44,18 @@ pub struct DeleteResponse {
     continue_token: Option<String>,
 }
 
-pub fn route() -> impl Filter<Extract = (WithStatus<warp::reply::Json>,), Error = Rejection> + Clone {
-    warp::delete()
-        .and(
-            warp::path("user")
-                .and(
-                    headers_cloned()
-                        .map(move |headers: HeaderMap<HeaderValue>| headers)
-                        .and_then(authenticate),
-                )
-                .and(warp::body::json())
-                .and_then(handle),
-        )
+pub fn route() -> impl Filter<Extract = (WithStatus<warp::reply::Json>,), Error = Rejection> + Clone
+{
+    warp::delete().and(
+        warp::path("user")
+            .and(
+                headers_cloned()
+                    .map(move |headers: HeaderMap<HeaderValue>| headers)
+                    .and_then(authenticate),
+            )
+            .and(warp::body::json())
+            .and_then(handle),
+    )
 }
 
 pub struct PendingDelete {
@@ -110,8 +110,9 @@ pub async fn handle(
                                 ))
                             } else {
                                 let blacklist = blacklist::get_collection();
-                                let blacklist_result =
-                                    blacklist.insert_one(Blacklist { token: jwt.jwt }, None).await;
+                                let blacklist_result = blacklist
+                                    .insert_one(Blacklist { token: jwt.jwt }, None)
+                                    .await;
                                 if blacklist_result.is_ok() {
                                     let result = collection
                                         .delete_one(
@@ -228,8 +229,9 @@ pub async fn handle(
                                 ))
                             } else {
                                 let blacklist = blacklist::get_collection();
-                                let blacklist_result =
-                                    blacklist.insert_one(Blacklist { token: jwt.jwt }, None).await;
+                                let blacklist_result = blacklist
+                                    .insert_one(Blacklist { token: jwt.jwt }, None)
+                                    .await;
                                 if blacklist_result.is_ok() {
                                     let collection = user::get_collection();
                                     let result = collection

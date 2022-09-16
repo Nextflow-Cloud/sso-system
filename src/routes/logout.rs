@@ -21,13 +21,13 @@ pub struct LogoutError {
     error: String,
 }
 
-pub fn route() -> impl Filter<Extract = (WithStatus<warp::reply::Json>,), Error = Rejection> + Clone {
-    warp::delete()
-        .and(
-            warp::path("login")
-                .and(headers_cloned().and_then(authenticate))
-                .and_then(handle),
-        )
+pub fn route() -> impl Filter<Extract = (WithStatus<warp::reply::Json>,), Error = Rejection> + Clone
+{
+    warp::delete().and(
+        warp::path("login")
+            .and(headers_cloned().and_then(authenticate))
+            .and_then(handle),
+    )
 }
 
 pub async fn handle(jwt: Option<Authenticate>) -> Result<WithStatus<Json>, warp::Rejection> {
