@@ -10,4 +10,5 @@ lazy_static! {
     pub static ref SALT: String = env::var("SALT").expect("SALT must be set");
     pub static ref HCAPTCHA_SECRET: String =
         env::var("HCAPTCHA_SECRET").expect("HCAPTCHA_SECRET must be set");
+    pub static ref CORS_HOST: String = env::var("CORS_HOST").expect("CORS_HOST must be set");
 }
