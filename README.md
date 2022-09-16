@@ -37,6 +37,7 @@ Before running, you should populate the environment variables with the following
 * `JWT_SECRET`: A 32 byte key to encode JWT tokens.
 * `SALT`: A Bcrypt salt to hash passwords and emails.
 * `HCAPTCHA_SECRET`: A secret from hCaptcha to verify hCaptcha tokens.
+* `CORS_HOST`: The host to allow CORS requests from.
 
 Currently, all variables are required for intended operation of the server.
 
