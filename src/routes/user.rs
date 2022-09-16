@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use warp::{
     header::headers_cloned,
     reply::{Json, WithStatus},
-    Filter, Reply, Rejection,
+    Filter, Rejection, Reply,
 };
 
 use crate::{
@@ -31,15 +31,16 @@ pub struct UserResponse {
 }
 
 pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    warp::get()
-        .and(
-            warp::path!("user")
-                .and(warp::path::param::<String>().map(Some).or_else(|_| async {
+    warp::get().and(
+        warp::path!("user")
+            .and(
+                warp::path::param::<String>().map(Some).or_else(|_| async {
                     Ok::<(Option<String>,), std::convert::Infallible>((None,))
-                }))
-                .and(headers_cloned().and_then(authenticate))
-                .and_then(handle),
-        )
+                }),
+            )
+            .and(headers_cloned().and_then(authenticate))
+            .and_then(handle),
+    )
 }
 
 pub async fn handle(

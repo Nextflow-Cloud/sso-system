@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use warp::{
     addr::remote,
     reply::{Json, WithStatus},
-    Filter, Rejection, Reply, 
+    Filter, Rejection, Reply,
 };
 use warp_real_ip::get_forwarded_for;
 
@@ -26,8 +26,7 @@ pub fn real_ip() -> impl Filter<Extract = (Option<IpAddr>,), Error = Infallible>
 }
 
 pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    warp::get()
-        .and(warp::path("ip").and(real_ip()).and_then(handle))
+    warp::get().and(warp::path("ip").and(real_ip()).and_then(handle))
 }
 
 pub async fn handle(ip: Option<IpAddr>) -> Result<WithStatus<Json>, warp::Rejection> {

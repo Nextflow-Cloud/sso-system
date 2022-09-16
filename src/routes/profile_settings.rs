@@ -9,7 +9,7 @@ use warp::{
     header::headers_cloned,
     multipart::{FormData, Part},
     reply::{Json, WithStatus},
-    Error, Filter, Reply, Rejection,
+    Error, Filter, Rejection, Reply,
 };
 
 use crate::{
@@ -28,14 +28,13 @@ pub struct ProfileSettingsResponse {
 }
 
 pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    warp::patch()
-        .and(
-            warp::path!("user" / "profile")
-                .and(headers_cloned().and_then(authenticate))
-                .and(warp::header::value("Content-Type"))
-                .and(warp::multipart::form().max_length(8_000_000))
-                .and_then(handle),
-        )
+    warp::patch().and(
+        warp::path!("user" / "profile")
+            .and(headers_cloned().and_then(authenticate))
+            .and(warp::header::value("Content-Type"))
+            .and(warp::multipart::form().max_length(8_000_000))
+            .and_then(handle),
+    )
 }
 
 async fn multipart_form(user_id: String, parts: Vec<Part>) -> Option<HashMap<String, String>> {

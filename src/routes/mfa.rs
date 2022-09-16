@@ -6,8 +6,8 @@ use lazy_static::lazy_static;
 use mongodb::bson::doc;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use totp_rs::{TOTP, Secret};
-use warp::{header::headers_cloned, Filter, Reply, Rejection};
+use totp_rs::{Secret, TOTP};
+use warp::{header::headers_cloned, Filter, Rejection, Reply};
 
 use crate::{
     authenticate::{authenticate, Authenticate},
