@@ -2,7 +2,6 @@ use warp::Filter;
 
 pub mod authenticate;
 pub mod database;
-pub mod email;
 pub mod environment;
 pub mod routes;
 pub mod utilities;
