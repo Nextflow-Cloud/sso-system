@@ -1,7 +1,5 @@
 use warp::{hyper::StatusCode, Filter, Rejection, Reply};
 
-use crate::environment::CORS_HOST;
-
 pub mod account_settings;
 pub mod delete;
 pub mod ip;
@@ -35,5 +33,4 @@ pub fn routes() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clo
         )
         .or(warp::fs::dir("./bundle"))
         .or(warp::fs::file("./bundle/index.html"))
-        .with(warp::cors().allow_origin(CORS_HOST.as_str()))
 }
