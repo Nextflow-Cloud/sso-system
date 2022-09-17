@@ -10,8 +10,11 @@ pub mod utilities;
 async fn main() {
     database::connect().await;
     warp::serve(
-        routes::routes()
-            .with(warp::cors().allow_origins(environment::CORS_ORIGINS.iter().map(|s| s.as_str()))),
+        routes::routes().with(
+            warp::cors()
+                .allow_origins(environment::CORS_ORIGINS.iter().map(|s| s.as_str()))
+                .allow_methods(["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]),
+        ),
     )
     .run(([0, 0, 0, 0], 9000))
     .await;
