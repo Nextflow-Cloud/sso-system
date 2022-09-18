@@ -1,64 +1,44 @@
-// use warp::{Filter, Rejection, http, Reply};
-// use crate::environment::CORS_ORIGINS;
+use warp::{Filter, wrap_fn};
+use warp::reject::Rejection;
 
-// Allow CORS from any provided origin in the array.
-// Sets the Access-Control-Allow-Origin header.
-// pub async fn handle_headers(method: http::Method, headers: http::HeaderMap) -> Result<String, Rejection> {
-//     let origin = headers.get("Origin").unwrap().to_str().unwrap();
-//     if CORS_ORIGINS.contains(&origin) {
-//         warp::reply::with_header(
-//             warp::reply(),
-//             "Access-Control-Allow-Origin",
-//             origin,
-//         )
-//     } else {
-//         warp::reply::with_header(
-//             warp::reply(),
-//             "Access-Control-Allow-Origin",
-//             "https://www.example.com",
-//         )
-//     }
-    
-// }
-
-#[macro_export]
-macro_rules! cors {
-    ($origins:expr) => {{
-        use warp::wrap_fn;
-        use warp::Filter;
-        use warp::Future;
-        use warp::Rejection;
-        use warp::Reply;
-        use std::pin::Pin;
-        
-        let handle_headers = |method: warp::http::Method, headers: warp::http::HeaderMap| async {
-            let origin = headers.get("Origin");
-            if let Some(origin) = origin {
-                let origin = origin.to_str().unwrap();
-                if $origins.contains(&origin.to_string()) {
-                    Ok((
-                        "Access-Control-Allow-Origin",
-                        origin,
-                    ))
-                } else {
-                    Ok((
-                        "Access-Control-Allow-Origin",
-                        $origins[0].as_str(),
-                    ))
-                }
+pub fn with_cors<This, Reply> (
+    this: This,
+    origins: &'static [String],
+) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone
+where
+    This: Filter<Extract = (Reply, ), Error = Rejection> + Send + Sync + 'static,
+    This: Clone,
+    Reply: Send + warp::Reply,
+{
+    let handle_headers = move |headers: warp::http::HeaderMap| async move {
+        let origin = headers.get("Origin");
+        if let Some(origin) = origin {
+            let origin = origin.to_str().unwrap().to_string();
+            if origins.contains(&origin) {
+                Ok::<_, Rejection>((
+                    "Access-Control-Allow-Origin",
+                    origin,
+                ))
             } else {
                 Ok((
                     "Access-Control-Allow-Origin",
-                    "*",
+                    origins[0].to_string(),
                 ))
             }
-        };
+        } else {
+            Ok((
+                "Access-Control-Allow-Origin",
+                "*".into(),
+            ))
+        }
+    };
 
-        wrap_fn(move |filter| {
-            warp::method().and(warp::header::headers_cloned()).and_then(handle_headers).and(Box::new(filter) as Box<dyn Filter<Extract = (impl Reply,), Error = Rejection, Future = Pin<Box<dyn Future<Output = Result<(impl Reply, ), Rejection>> + Send>>>>).map(|header: (&str, &str), reply: Box<dyn warp::Reply>| {
+    this.with(wrap_fn::<_, This, _>(move |filter: This| {
+        warp::header::headers_cloned()
+            .and_then(handle_headers)
+            .and(filter)
+            .map(|header: (&'static str, String), reply: Reply| {
                 warp::reply::with_header(reply, header.0, header.1)
             })
-            
-        })
-    }}
+    }))
 }
