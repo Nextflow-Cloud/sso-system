@@ -15,12 +15,12 @@ where
         if let Some(origin) = origin {
             let origin = origin.to_str().unwrap().to_string();
             if origins.contains(&origin) {
-                Ok::<_, Rejection>(("Access-Control-Allow-Origin", origin))
+                Ok::<_, Rejection>(origin)
             } else {
-                Ok(("Access-Control-Allow-Origin", origins[0].to_string()))
+                Ok(origins[0].to_string())
             }
         } else {
-            Ok(("Access-Control-Allow-Origin", "*".into()))
+            Ok("*".into())
         }
     };
 
@@ -28,8 +28,10 @@ where
         warp::header::headers_cloned()
             .and_then(handle_headers)
             .and(filter)
-            .map(|header: (&'static str, String), reply: Reply| {
-                warp::reply::with_header(reply, header.0, header.1)
+            .map(|header: String, reply: Reply| {
+                let allow_origin = warp::reply::with_header(reply, "Access-Control-Allow-Origin", header);
+                let allow_headers = warp::reply::with_header(allow_origin, "Access-Control-Allow-Headers", "*");
+                warp::reply::with_header(allow_headers, "Access-Control-Allow-Methods", "*")
             })
     }))
 }
