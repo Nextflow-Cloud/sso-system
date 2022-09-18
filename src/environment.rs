@@ -15,4 +15,5 @@ lazy_static! {
         .split(',')
         .map(|s| s.to_string())
         .collect();
+    pub static ref ROOT_DOMAIN: String = env::var("ROOT_DOMAIN").expect("ROOT_DOMAIN must be set");
 }

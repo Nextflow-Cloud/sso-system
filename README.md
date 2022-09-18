@@ -38,6 +38,7 @@ Before running, you should populate the environment variables with the following
 * `SALT`: A Bcrypt salt to hash emails.
 * `HCAPTCHA_SECRET`: A secret from hCaptcha to verify hCaptcha tokens.
 * `CORS_ORIGINS`: A list of origins to allow CORS requests from, separated by commas.
+* `ROOT_DOMAIN`: The root domain of the server. This is used for cookies.
 
 Currently, all variables are required for intended operation of the server.
 
