@@ -1,12 +1,12 @@
-use warp::{Filter, wrap_fn};
 use warp::reject::Rejection;
+use warp::{wrap_fn, Filter};
 
-pub fn with_cors<This, Reply> (
+pub fn with_cors<This, Reply>(
     this: This,
     origins: &'static [String],
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = Rejection> + Clone
 where
-    This: Filter<Extract = (Reply, ), Error = Rejection> + Send + Sync + 'static,
+    This: Filter<Extract = (Reply,), Error = Rejection> + Send + Sync + 'static,
     This: Clone,
     Reply: Send + warp::Reply,
 {
@@ -15,21 +15,12 @@ where
         if let Some(origin) = origin {
             let origin = origin.to_str().unwrap().to_string();
             if origins.contains(&origin) {
-                Ok::<_, Rejection>((
-                    "Access-Control-Allow-Origin",
-                    origin,
-                ))
+                Ok::<_, Rejection>(("Access-Control-Allow-Origin", origin))
             } else {
-                Ok((
-                    "Access-Control-Allow-Origin",
-                    origins[0].to_string(),
-                ))
+                Ok(("Access-Control-Allow-Origin", origins[0].to_string()))
             }
         } else {
-            Ok((
-                "Access-Control-Allow-Origin",
-                "*".into(),
-            ))
+            Ok(("Access-Control-Allow-Origin", "*".into()))
         }
     };
 
