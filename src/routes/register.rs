@@ -132,7 +132,7 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
                             Ok(warp::reply::with_header(warp::reply::with_status(
                                 warp::reply::json(&response),
                                 StatusCode::OK,
-                            ), "Set-Cookie", format!("token={}; Max-Age=2147483647; Domain={}; Secure", token, ROOT_DOMAIN.as_str())))
+                            ), "Set-Cookie", format!("token={}; Max-Age=2147483647; Domain={}; Path=/; Secure", token, ROOT_DOMAIN.as_str())))
                         }
                     } else {
                         let error = RegisterError {
