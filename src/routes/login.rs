@@ -9,7 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use totp_rs::{Algorithm, Secret, TOTP};
 use warp::{
     hyper::StatusCode,
-    reply::{Json, WithStatus},
+    reply::{Json, WithStatus, WithHeader},
     Filter, Rejection, Reply,
 };
 
@@ -67,7 +67,7 @@ pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clon
     warp::post().and(warp::path("login").and(warp::body::json()).and_then(handle))
 }
 
-pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
+pub async fn handle(login: Login) -> Result<WithHeader<WithStatus<Json>>, warp::Rejection> {
     match login.stage {
         1 => {
             let collection = crate::database::user::get_collection();
@@ -105,36 +105,36 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                             mfa_enabled: None,
                             token: None,
                         };
-                        Ok(warp::reply::with_status(
+                        Ok(warp::reply::with_header(warp::reply::with_status(
                             warp::reply::json(&response),
                             StatusCode::OK,
-                        ))
+                        ), "", ""))
                     } else {
                         let error = LoginError {
                             error: "Unknown user".to_string(),
                         };
-                        Ok(warp::reply::with_status(
+                        Ok(warp::reply::with_header(warp::reply::with_status(
                             warp::reply::json(&error),
                             StatusCode::UNAUTHORIZED,
-                        ))
+                        ), "", ""))
                     }
                 } else {
                     let error = LoginError {
                         error: "Database error".to_string(),
                     };
-                    Ok(warp::reply::with_status(
+                    Ok(warp::reply::with_header(warp::reply::with_status(
                         warp::reply::json(&error),
                         StatusCode::INTERNAL_SERVER_ERROR,
-                    ))
+                    ), "", ""))
                 }
             } else {
                 let error = LoginError {
                     error: "No email provided".to_string(),
                 };
-                Ok(warp::reply::with_status(
+                Ok(warp::reply::with_header(warp::reply::with_status(
                     warp::reply::json(&error),
                     StatusCode::BAD_REQUEST,
-                ))
+                ), "", ""))
             }
         }
         2 => {
@@ -150,10 +150,10 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                         let error = LoginError {
                             error: "Session expired".to_string(),
                         };
-                        Ok(warp::reply::with_status(
+                        Ok(warp::reply::with_header(warp::reply::with_status(
                             warp::reply::json(&error),
                             StatusCode::UNAUTHORIZED,
-                        ))
+                        ), "", ""))
                     } else if let Some(password) = login.password {
                         let verified = verify(password, &pending_login.user.password_hash)
                             .expect("Unexpected error: failed to verify password");
@@ -176,10 +176,10 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                                     continue_token: Some(continue_token),
                                     mfa_enabled: Some(true),
                                 };
-                                Ok(warp::reply::with_status(
+                                Ok(warp::reply::with_header(warp::reply::with_status(
                                     warp::reply::json(&response),
                                     StatusCode::OK,
-                                ))
+                                ), "", ""))
                             } else {
                                 let jwt_object = UserJwt {
                                     id: pending_login.user.id.clone(),
@@ -193,50 +193,50 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                                 drop(pending_login);
                                 PENDING_LOGINS.remove(&continue_token);
                                 let response = LoginResponse {
-                                    token: Some(token),
+                                    token: Some(token.clone()),
                                     continue_token: None,
                                     mfa_enabled: Some(false),
                                 };
-                                Ok(warp::reply::with_status(
+                                Ok(warp::reply::with_header(warp::reply::with_status(
                                     warp::reply::json(&response),
                                     StatusCode::OK,
-                                ))
+                                ), "Set-Cookie", format!("token={}; MaxAge=2147483647; Secure", token)))
                             }
                         } else {
                             let error = LoginError {
                                 error: "Invalid password".to_string(),
                             };
-                            Ok(warp::reply::with_status(
+                            Ok(warp::reply::with_header(warp::reply::with_status(
                                 warp::reply::json(&error),
                                 StatusCode::UNAUTHORIZED,
-                            ))
+                            ), "", ""))
                         }
                     } else {
                         let error = LoginError {
                             error: "No password provided".to_string(),
                         };
-                        Ok(warp::reply::with_status(
+                        Ok(warp::reply::with_header(warp::reply::with_status(
                             warp::reply::json(&error),
                             StatusCode::BAD_REQUEST,
-                        ))
+                        ), "", ""))
                     }
                 } else {
                     let error = LoginError {
                         error: "Session does not exist".to_string(),
                     };
-                    Ok(warp::reply::with_status(
+                    Ok(warp::reply::with_header(warp::reply::with_status(
                         warp::reply::json(&error),
                         StatusCode::UNAUTHORIZED,
-                    ))
+                    ), "", ""))
                 }
             } else {
                 let error = LoginError {
                     error: "No continue token provided".to_string(),
                 };
-                Ok(warp::reply::with_status(
+                Ok(warp::reply::with_header(warp::reply::with_status(
                     warp::reply::json(&error),
                     StatusCode::BAD_REQUEST,
-                ))
+                ), "", ""))
             }
         }
         3 => {
@@ -252,10 +252,10 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                         let error = LoginError {
                             error: "Session expired".to_string(),
                         };
-                        Ok(warp::reply::with_status(
+                        Ok(warp::reply::with_header(warp::reply::with_status(
                             warp::reply::json(&error),
                             StatusCode::UNAUTHORIZED,
-                        ))
+                        ), "", ""))
                     } else if let Some(code) = login.code {
                         let secret = Secret::Encoded(mfa_session.user.mfa_secret.clone().unwrap());
                         let totp = TOTP::new(
@@ -275,10 +275,10 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                             let error = LoginError {
                                 error: "Invalid code".to_string(),
                             };
-                            Ok(warp::reply::with_status(
+                            Ok(warp::reply::with_header(warp::reply::with_status(
                                 warp::reply::json(&error),
                                 StatusCode::UNAUTHORIZED,
-                            ))
+                            ), "", ""))
                         } else {
                             let jwt_object = UserJwt {
                                 id: mfa_session.user.id.clone(),
@@ -292,51 +292,51 @@ pub async fn handle(login: Login) -> Result<WithStatus<Json>, warp::Rejection> {
                             drop(mfa_session);
                             PENDING_MFAS.remove(&continue_token);
                             let response = LoginResponse {
-                                token: Some(token),
+                                token: Some(token.clone()),
                                 continue_token: None,
                                 mfa_enabled: None,
                             };
-                            Ok(warp::reply::with_status(
+                            Ok(warp::reply::with_header(warp::reply::with_status(
                                 warp::reply::json(&response),
                                 StatusCode::OK,
-                            ))
+                            ), "Set-Cookie", format!("token={}; MaxAge=2147483647; Secure", token)))
                         }
                     } else {
                         let error = LoginError {
                             error: "No code provided".to_string(),
                         };
-                        Ok(warp::reply::with_status(
+                        Ok(warp::reply::with_header(warp::reply::with_status(
                             warp::reply::json(&error),
                             StatusCode::BAD_REQUEST,
-                        ))
+                        ), "", ""))
                     }
                 } else {
                     let error = LoginError {
                         error: "Session does not exist".to_string(),
                     };
-                    Ok(warp::reply::with_status(
+                    Ok(warp::reply::with_header(warp::reply::with_status(
                         warp::reply::json(&error),
                         StatusCode::BAD_REQUEST,
-                    ))
+                    ), "", ""))
                 }
             } else {
                 let error = LoginError {
                     error: "No continue token provided".to_string(),
                 };
-                Ok(warp::reply::with_status(
+                Ok(warp::reply::with_header(warp::reply::with_status(
                     warp::reply::json(&error),
                     StatusCode::BAD_REQUEST,
-                ))
+                ), "", ""))
             }
         }
         _ => {
             let error = LoginError {
                 error: "Invalid stage".to_string(),
             };
-            Ok(warp::reply::with_status(
+            Ok(warp::reply::with_header(warp::reply::with_status(
                 warp::reply::json(&error),
                 StatusCode::BAD_REQUEST,
-            ))
+            ), "", ""))
         }
     }
 }

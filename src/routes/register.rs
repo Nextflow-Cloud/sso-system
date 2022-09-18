@@ -6,7 +6,7 @@ use reqwest;
 use serde::{Deserialize, Serialize};
 use warp::{
     hyper::StatusCode,
-    reply::{Json, WithStatus},
+    reply::{Json, WithStatus, WithHeader},
     Filter, Rejection, Reply,
 };
 
@@ -50,7 +50,7 @@ pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clon
     warp::post().and(warp::path("user").and(warp::body::json()).and_then(handle))
 }
 
-pub async fn handle(register: Register) -> Result<WithStatus<Json>, warp::Rejection> {
+pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, warp::Rejection> {
     let client = reqwest::Client::new();
     let result = client
         .post("https://hcaptcha.com/siteverify")
@@ -116,10 +116,10 @@ pub async fn handle(register: Register) -> Result<WithStatus<Json>, warp::Reject
                             let error = RegisterError {
                                 error: "Failed to insert into database".to_string(),
                             };
-                            Ok(warp::reply::with_status(
+                            Ok(warp::reply::with_header(warp::reply::with_status(
                                 warp::reply::json(&error),
                                 StatusCode::INTERNAL_SERVER_ERROR,
-                            ))
+                            ), "", ""))
                         } else {
                             let jwt_object = UserJwt { id: user_id };
                             let token = encode(
@@ -128,55 +128,55 @@ pub async fn handle(register: Register) -> Result<WithStatus<Json>, warp::Reject
                                 &EncodingKey::from_secret(JWT_SECRET.as_ref()),
                             )
                             .expect("Unexpected error: failed to encode token");
-                            let response = RegisterResponse { token };
-                            Ok(warp::reply::with_status(
+                            let response = RegisterResponse { token: token.clone() };
+                            Ok(warp::reply::with_header(warp::reply::with_status(
                                 warp::reply::json(&response),
                                 StatusCode::OK,
-                            ))
+                            ), "Set-Cookie", format!("token={}; MaxAge=2147483647; Secure", token)))
                         }
                     } else {
                         let error = RegisterError {
                             error: "User already exists".to_string(),
                         };
-                        Ok(warp::reply::with_status(
+                        Ok(warp::reply::with_header(warp::reply::with_status(
                             warp::reply::json(&error),
                             StatusCode::CONFLICT,
-                        ))
+                        ), "", ""))
                     }
                 } else {
                     let error = RegisterError {
                         error: "Failed to query database".to_string(),
                     };
-                    Ok(warp::reply::with_status(
+                    Ok(warp::reply::with_header(warp::reply::with_status(
                         warp::reply::json(&error),
                         StatusCode::INTERNAL_SERVER_ERROR,
-                    ))
+                    ), "", ""))
                 }
             } else {
                 let error = RegisterError {
                     error: "Invalid hCaptcha token".to_string(),
                 };
-                Ok(warp::reply::with_status(
+                Ok(warp::reply::with_header(warp::reply::with_status(
                     warp::reply::json(&error),
                     StatusCode::BAD_REQUEST,
-                ))
+                ), "", ""))
             }
         } else {
             let error = RegisterError {
                 error: "Failed to fetch hCaptcha response".to_string(),
             };
-            Ok(warp::reply::with_status(
+            Ok(warp::reply::with_header(warp::reply::with_status(
                 warp::reply::json(&error),
                 StatusCode::INTERNAL_SERVER_ERROR,
-            ))
+            ), "", ""))
         }
     } else {
         let error = RegisterError {
             error: "Failed to fetch hCaptcha response".to_string(),
         };
-        Ok(warp::reply::with_status(
+        Ok(warp::reply::with_header(warp::reply::with_status(
             warp::reply::json(&error),
             StatusCode::INTERNAL_SERVER_ERROR,
-        ))
+        ), "", ""))
     }
 }
