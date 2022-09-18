@@ -15,7 +15,7 @@ use warp::{
 
 use crate::{
     database::user::User,
-    environment::{JWT_SECRET, SALT},
+    environment::{JWT_SECRET, SALT, ROOT_DOMAIN},
     utilities::{generate_id, vec_to_array},
 };
 
@@ -200,7 +200,7 @@ pub async fn handle(login: Login) -> Result<WithHeader<WithStatus<Json>>, warp::
                                 Ok(warp::reply::with_header(warp::reply::with_status(
                                     warp::reply::json(&response),
                                     StatusCode::OK,
-                                ), "Set-Cookie", format!("token={}; Max-Age=2147483647; Secure", token)))
+                                ), "Set-Cookie", format!("token={}; Max-Age=2147483647; Domain={}; Secure", token, ROOT_DOMAIN.as_str())))
                             }
                         } else {
                             let error = LoginError {
@@ -299,7 +299,7 @@ pub async fn handle(login: Login) -> Result<WithHeader<WithStatus<Json>>, warp::
                             Ok(warp::reply::with_header(warp::reply::with_status(
                                 warp::reply::json(&response),
                                 StatusCode::OK,
-                            ), "Set-Cookie", format!("token={}; Max-Age=2147483647; Secure", token)))
+                            ), "Set-Cookie", format!("token={}; Max-Age=2147483647; Domain={}; Secure", token, ROOT_DOMAIN.as_str())))
                         }
                     } else {
                         let error = LoginError {
