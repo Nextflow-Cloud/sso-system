@@ -32,7 +32,7 @@ pub struct UserResponse {
 
 pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     warp::get().and(
-        warp::path!("user")
+        warp::path!("user" / ..)
             .and(
                 warp::path::param::<String>().map(Some).or_else(|_| async {
                     Ok::<(Option<String>,), std::convert::Infallible>((None,))
