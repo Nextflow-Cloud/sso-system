@@ -9,13 +9,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use totp_rs::{Algorithm, Secret, TOTP};
 use warp::{
     hyper::StatusCode,
-    reply::{Json, WithStatus, WithHeader},
+    reply::{Json, WithHeader, WithStatus},
     Filter, Rejection, Reply,
 };
 
 use crate::{
     database::user::User,
-    environment::{JWT_SECRET, SALT, ROOT_DOMAIN},
+    environment::{JWT_SECRET, ROOT_DOMAIN, SALT},
     utilities::{generate_id, vec_to_array},
 };
 
@@ -107,36 +107,46 @@ pub async fn handle(login: Login) -> Result<WithHeader<WithStatus<Json>>, warp::
                             mfa_enabled: None,
                             token: None,
                         };
-                        Ok(warp::reply::with_header(warp::reply::with_status(
-                            warp::reply::json(&response),
-                            StatusCode::OK,
-                        ), "", ""))
+                        Ok(warp::reply::with_header(
+                            warp::reply::with_status(warp::reply::json(&response), StatusCode::OK),
+                            "",
+                            "",
+                        ))
                     } else {
                         let error = LoginError {
                             error: "Unknown user".to_string(),
                         };
-                        Ok(warp::reply::with_header(warp::reply::with_status(
-                            warp::reply::json(&error),
-                            StatusCode::UNAUTHORIZED,
-                        ), "", ""))
+                        Ok(warp::reply::with_header(
+                            warp::reply::with_status(
+                                warp::reply::json(&error),
+                                StatusCode::UNAUTHORIZED,
+                            ),
+                            "",
+                            "",
+                        ))
                     }
                 } else {
                     let error = LoginError {
                         error: "Database error".to_string(),
                     };
-                    Ok(warp::reply::with_header(warp::reply::with_status(
-                        warp::reply::json(&error),
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                    ), "", ""))
+                    Ok(warp::reply::with_header(
+                        warp::reply::with_status(
+                            warp::reply::json(&error),
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                        ),
+                        "",
+                        "",
+                    ))
                 }
             } else {
                 let error = LoginError {
                     error: "No email provided".to_string(),
                 };
-                Ok(warp::reply::with_header(warp::reply::with_status(
-                    warp::reply::json(&error),
-                    StatusCode::BAD_REQUEST,
-                ), "", ""))
+                Ok(warp::reply::with_header(
+                    warp::reply::with_status(warp::reply::json(&error), StatusCode::BAD_REQUEST),
+                    "",
+                    "",
+                ))
             }
         }
         2 => {
@@ -152,10 +162,14 @@ pub async fn handle(login: Login) -> Result<WithHeader<WithStatus<Json>>, warp::
                         let error = LoginError {
                             error: "Session expired".to_string(),
                         };
-                        Ok(warp::reply::with_header(warp::reply::with_status(
-                            warp::reply::json(&error),
-                            StatusCode::UNAUTHORIZED,
-                        ), "", ""))
+                        Ok(warp::reply::with_header(
+                            warp::reply::with_status(
+                                warp::reply::json(&error),
+                                StatusCode::UNAUTHORIZED,
+                            ),
+                            "",
+                            "",
+                        ))
                     } else if let Some(password) = login.password {
                         let verified = verify(password, &pending_login.user.password_hash)
                             .expect("Unexpected error: failed to verify password");
@@ -175,10 +189,14 @@ pub async fn handle(login: Login) -> Result<WithHeader<WithStatus<Json>>, warp::
                                     continue_token: Some(continue_token),
                                     mfa_enabled: Some(true),
                                 };
-                                Ok(warp::reply::with_header(warp::reply::with_status(
-                                    warp::reply::json(&response),
-                                    StatusCode::OK,
-                                ), "", ""))
+                                Ok(warp::reply::with_header(
+                                    warp::reply::with_status(
+                                        warp::reply::json(&response),
+                                        StatusCode::OK,
+                                    ),
+                                    "",
+                                    "",
+                                ))
                             } else {
                                 let persist = login.persist.unwrap_or(false);
                                 let millis = duration.as_millis();
@@ -205,46 +223,67 @@ pub async fn handle(login: Login) -> Result<WithHeader<WithStatus<Json>>, warp::
                                     continue_token: None,
                                     mfa_enabled: Some(false),
                                 };
-                                Ok(warp::reply::with_header(warp::reply::with_status(
-                                    warp::reply::json(&response),
-                                    StatusCode::OK,
-                                ), "Set-Cookie", format!("token={}; Max-Age=2147483647; Domain={}; Path=/; Secure", token, ROOT_DOMAIN.as_str())))
+                                Ok(warp::reply::with_header(
+                                    warp::reply::with_status(
+                                        warp::reply::json(&response),
+                                        StatusCode::OK,
+                                    ),
+                                    "Set-Cookie",
+                                    format!(
+                                        "token={}; Max-Age=2147483647; Domain={}; Path=/; Secure",
+                                        token,
+                                        ROOT_DOMAIN.as_str()
+                                    ),
+                                ))
                             }
                         } else {
                             let error = LoginError {
                                 error: "Invalid password".to_string(),
                             };
-                            Ok(warp::reply::with_header(warp::reply::with_status(
-                                warp::reply::json(&error),
-                                StatusCode::UNAUTHORIZED,
-                            ), "", ""))
+                            Ok(warp::reply::with_header(
+                                warp::reply::with_status(
+                                    warp::reply::json(&error),
+                                    StatusCode::UNAUTHORIZED,
+                                ),
+                                "",
+                                "",
+                            ))
                         }
                     } else {
                         let error = LoginError {
                             error: "No password provided".to_string(),
                         };
-                        Ok(warp::reply::with_header(warp::reply::with_status(
-                            warp::reply::json(&error),
-                            StatusCode::BAD_REQUEST,
-                        ), "", ""))
+                        Ok(warp::reply::with_header(
+                            warp::reply::with_status(
+                                warp::reply::json(&error),
+                                StatusCode::BAD_REQUEST,
+                            ),
+                            "",
+                            "",
+                        ))
                     }
                 } else {
                     let error = LoginError {
                         error: "Session does not exist".to_string(),
                     };
-                    Ok(warp::reply::with_header(warp::reply::with_status(
-                        warp::reply::json(&error),
-                        StatusCode::UNAUTHORIZED,
-                    ), "", ""))
+                    Ok(warp::reply::with_header(
+                        warp::reply::with_status(
+                            warp::reply::json(&error),
+                            StatusCode::UNAUTHORIZED,
+                        ),
+                        "",
+                        "",
+                    ))
                 }
             } else {
                 let error = LoginError {
                     error: "No continue token provided".to_string(),
                 };
-                Ok(warp::reply::with_header(warp::reply::with_status(
-                    warp::reply::json(&error),
-                    StatusCode::BAD_REQUEST,
-                ), "", ""))
+                Ok(warp::reply::with_header(
+                    warp::reply::with_status(warp::reply::json(&error), StatusCode::BAD_REQUEST),
+                    "",
+                    "",
+                ))
             }
         }
         3 => {
@@ -260,10 +299,14 @@ pub async fn handle(login: Login) -> Result<WithHeader<WithStatus<Json>>, warp::
                         let error = LoginError {
                             error: "Session expired".to_string(),
                         };
-                        Ok(warp::reply::with_header(warp::reply::with_status(
-                            warp::reply::json(&error),
-                            StatusCode::UNAUTHORIZED,
-                        ), "", ""))
+                        Ok(warp::reply::with_header(
+                            warp::reply::with_status(
+                                warp::reply::json(&error),
+                                StatusCode::UNAUTHORIZED,
+                            ),
+                            "",
+                            "",
+                        ))
                     } else if let Some(code) = login.code {
                         let secret = Secret::Encoded(mfa_session.user.mfa_secret.clone().unwrap());
                         let totp = TOTP::new(
@@ -283,10 +326,14 @@ pub async fn handle(login: Login) -> Result<WithHeader<WithStatus<Json>>, warp::
                             let error = LoginError {
                                 error: "Invalid code".to_string(),
                             };
-                            Ok(warp::reply::with_header(warp::reply::with_status(
-                                warp::reply::json(&error),
-                                StatusCode::UNAUTHORIZED,
-                            ), "", ""))
+                            Ok(warp::reply::with_header(
+                                warp::reply::with_status(
+                                    warp::reply::json(&error),
+                                    StatusCode::UNAUTHORIZED,
+                                ),
+                                "",
+                                "",
+                            ))
                         } else {
                             let persist = login.persist.unwrap_or(false);
                             let millis = duration.as_millis();
@@ -313,47 +360,65 @@ pub async fn handle(login: Login) -> Result<WithHeader<WithStatus<Json>>, warp::
                                 continue_token: None,
                                 mfa_enabled: None,
                             };
-                            Ok(warp::reply::with_header(warp::reply::with_status(
-                                warp::reply::json(&response),
-                                StatusCode::OK,
-                            ), "Set-Cookie", format!("token={}; Max-Age=2147483647; Domain={}; Path=/; Secure", token, ROOT_DOMAIN.as_str())))
+                            Ok(warp::reply::with_header(
+                                warp::reply::with_status(
+                                    warp::reply::json(&response),
+                                    StatusCode::OK,
+                                ),
+                                "Set-Cookie",
+                                format!(
+                                    "token={}; Max-Age=2147483647; Domain={}; Path=/; Secure",
+                                    token,
+                                    ROOT_DOMAIN.as_str()
+                                ),
+                            ))
                         }
                     } else {
                         let error = LoginError {
                             error: "No code provided".to_string(),
                         };
-                        Ok(warp::reply::with_header(warp::reply::with_status(
-                            warp::reply::json(&error),
-                            StatusCode::BAD_REQUEST,
-                        ), "", ""))
+                        Ok(warp::reply::with_header(
+                            warp::reply::with_status(
+                                warp::reply::json(&error),
+                                StatusCode::BAD_REQUEST,
+                            ),
+                            "",
+                            "",
+                        ))
                     }
                 } else {
                     let error = LoginError {
                         error: "Session does not exist".to_string(),
                     };
-                    Ok(warp::reply::with_header(warp::reply::with_status(
-                        warp::reply::json(&error),
-                        StatusCode::BAD_REQUEST,
-                    ), "", ""))
+                    Ok(warp::reply::with_header(
+                        warp::reply::with_status(
+                            warp::reply::json(&error),
+                            StatusCode::BAD_REQUEST,
+                        ),
+                        "",
+                        "",
+                    ))
                 }
             } else {
                 let error = LoginError {
                     error: "No continue token provided".to_string(),
                 };
-                Ok(warp::reply::with_header(warp::reply::with_status(
-                    warp::reply::json(&error),
-                    StatusCode::BAD_REQUEST,
-                ), "", ""))
+                Ok(warp::reply::with_header(
+                    warp::reply::with_status(warp::reply::json(&error), StatusCode::BAD_REQUEST),
+                    "",
+                    "",
+                ))
             }
         }
         _ => {
             let error = LoginError {
                 error: "Invalid stage".to_string(),
             };
-            Ok(warp::reply::with_header(warp::reply::with_status(
-                warp::reply::json(&error),
-                StatusCode::BAD_REQUEST,
-            ), "", ""))
+            Ok(warp::reply::with_header(
+                warp::reply::with_status(warp::reply::json(&error), StatusCode::BAD_REQUEST),
+                "",
+                "",
+            ))
         }
     }
 }

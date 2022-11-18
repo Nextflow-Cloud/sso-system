@@ -1,4 +1,7 @@
-use std::{collections::HashSet, time::{SystemTime, UNIX_EPOCH}};
+use std::{
+    collections::HashSet,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use mongodb::bson::doc;
@@ -50,12 +53,14 @@ pub async fn authenticate(
                 return Ok(None);
             }
             let collection = crate::database::blacklist::get_collection();
-            let query = collection.find_one(
-                doc! {
-                    "token": j
-                },
-                None,
-            ).await;
+            let query = collection
+                .find_one(
+                    doc! {
+                        "token": j
+                    },
+                    None,
+                )
+                .await;
             if let Ok(q) = query {
                 if q.is_some() {
                     return Ok(None);
