@@ -1,7 +1,7 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, time::{SystemTime, UNIX_EPOCH}};
 
-// use chrono::{DateTime, Utc};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+use mongodb::bson::doc;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use warp::Rejection;
 
@@ -42,6 +42,25 @@ pub async fn authenticate(
             &validation,
         );
         if let Ok(d) = decoded {
+            let duration = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Unexpected error: time went backwards");
+            let millis = duration.as_millis();
+            if millis > d.claims.expires_at {
+                return Ok(None);
+            }
+            let collection = crate::database::blacklist::get_collection();
+            let query = collection.find_one(
+                doc! {
+                    "token": j
+                },
+                None,
+            ).await;
+            if let Ok(q) = query {
+                if q.is_some() {
+                    return Ok(None);
+                }
+            }
             let value = Authenticate {
                 jwt: j.to_string(),
                 jwt_content: d.claims,

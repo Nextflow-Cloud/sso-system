@@ -56,6 +56,8 @@ pub struct PendingMfa {
 #[derive(Deserialize, Serialize)]
 pub struct UserJwt {
     pub(crate) id: String,
+    pub(crate) issued_at: u128,
+    pub(crate) expires_at: u128,
 }
 
 lazy_static! {
@@ -160,9 +162,6 @@ pub async fn handle(login: Login) -> Result<WithHeader<WithStatus<Json>>, warp::
                         if verified {
                             if pending_login.user.mfa_enabled {
                                 let continue_token = generate_id();
-                                let duration = SystemTime::now()
-                                    .duration_since(UNIX_EPOCH)
-                                    .expect("Unexpected error: time went backwards");
                                 let pending_mfa = PendingMfa {
                                     time: duration.as_secs(),
                                     user: pending_login.user.clone(),
@@ -181,8 +180,17 @@ pub async fn handle(login: Login) -> Result<WithHeader<WithStatus<Json>>, warp::
                                     StatusCode::OK,
                                 ), "", ""))
                             } else {
+                                let persist = login.persist.unwrap_or(false);
+                                let millis = duration.as_millis();
+                                let expires_at = if persist {
+                                    millis + 2592000000
+                                } else {
+                                    millis + 604800000
+                                };
                                 let jwt_object = UserJwt {
                                     id: pending_login.user.id.clone(),
+                                    issued_at: millis,
+                                    expires_at,
                                 };
                                 let token = encode(
                                     &Header::default(),
@@ -280,8 +288,17 @@ pub async fn handle(login: Login) -> Result<WithHeader<WithStatus<Json>>, warp::
                                 StatusCode::UNAUTHORIZED,
                             ), "", ""))
                         } else {
+                            let persist = login.persist.unwrap_or(false);
+                            let millis = duration.as_millis();
+                            let expires_at = if persist {
+                                millis + 2592000000
+                            } else {
+                                millis + 604800000
+                            };
                             let jwt_object = UserJwt {
                                 id: mfa_session.user.id.clone(),
+                                issued_at: millis,
+                                expires_at,
                             };
                             let token = encode(
                                 &Header::default(),

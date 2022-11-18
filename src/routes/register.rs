@@ -1,3 +1,5 @@
+use std::time::{UNIX_EPOCH, SystemTime};
+
 use base64::decode;
 use bcrypt::{hash, hash_with_salt, DEFAULT_COST};
 use jsonwebtoken::{encode, EncodingKey, Header};
@@ -25,6 +27,7 @@ pub struct Register {
     display_name: String,
     email: String,
     captcha_token: String,
+    persist: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -121,7 +124,21 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
                                 StatusCode::INTERNAL_SERVER_ERROR,
                             ), "", ""))
                         } else {
-                            let jwt_object = UserJwt { id: user_id };
+                            let duration = SystemTime::now()
+                                .duration_since(UNIX_EPOCH)
+                                .expect("Unexpected error: time went backwards");
+                            let persist = register.persist.unwrap_or(false);
+                            let millis = duration.as_millis();
+                            let expires_at = if persist {
+                                millis + 2592000000
+                            } else {
+                                millis + 604800000
+                            };
+                            let jwt_object = UserJwt { 
+                                id: user_id,
+                                issued_at: millis,
+                                expires_at,
+                            };
                             let token = encode(
                                 &Header::default(),
                                 &jwt_object,
