@@ -43,7 +43,7 @@ pub fn generate_id() -> String {
     let length = 32;
     let mut s = String::with_capacity(2 * length);
     for byte in random_number(length) {
-        write!(s, "{:02X}", byte).expect("Unable to write to string");
+        write!(s, "{byte:02X}").expect("Unable to write to string");
     }
     s
 }

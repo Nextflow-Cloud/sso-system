@@ -54,7 +54,7 @@ async fn multipart_form(user_id: String, parts: Vec<Part>) -> Option<HashMap<Str
                         .to_string(),
                 );
             } else {
-                println!("invalid file type found: {}", content_type);
+                println!("invalid file type found: {content_type}");
                 return None;
             }
         }
@@ -66,7 +66,7 @@ async fn multipart_form(user_id: String, parts: Vec<Part>) -> Option<HashMap<Str
             })
             .await
             .map_err(|e| {
-                println!("reading file error: {}", e);
+                println!("reading file error: {e}");
             })
             .unwrap();
         if file_extension.is_some() {
@@ -77,7 +77,7 @@ async fn multipart_form(user_id: String, parts: Vec<Part>) -> Option<HashMap<Str
             async_std::fs::write(&file_path, value)
                 .await
                 .map_err(|e| {
-                    println!("error writing file: {}", e);
+                    println!("error writing file: {e}");
                 })
                 .unwrap();
             vars.insert(field_name, new_filename);
