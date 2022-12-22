@@ -29,8 +29,10 @@ where
             .and_then(handle_headers)
             .and(filter)
             .map(|header: String, reply: Reply| {
-                let allow_origin = warp::reply::with_header(reply, "Access-Control-Allow-Origin", header);
-                let allow_headers = warp::reply::with_header(allow_origin, "Access-Control-Allow-Headers", "*");
+                let allow_origin =
+                    warp::reply::with_header(reply, "Access-Control-Allow-Origin", header);
+                let allow_headers =
+                    warp::reply::with_header(allow_origin, "Access-Control-Allow-Headers", "*");
                 warp::reply::with_header(allow_headers, "Access-Control-Allow-Methods", "*")
             })
     }))
