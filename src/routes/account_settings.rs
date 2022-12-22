@@ -4,7 +4,6 @@ use bcrypt::verify;
 use dashmap::DashMap;
 use lazy_static::lazy_static;
 use mongodb::bson::doc;
-use regex::Regex;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use totp_rs::{Algorithm, Secret, TOTP};
@@ -17,7 +16,7 @@ use warp::{
 use crate::{
     authenticate::{authenticate, Authenticate},
     database::user::{get_collection, User},
-    utilities::generate_id,
+    utilities::{generate_id, USERNAME_RE},
 };
 
 #[derive(Deserialize, Serialize)]
@@ -52,7 +51,6 @@ pub struct PendingMfa {
 
 lazy_static! {
     pub static ref PENDING_MFAS: DashMap<String, PendingMfa> = DashMap::new();
-    pub static ref RE: Regex = Regex::new(r"^[0-9A-Za-z_.-]{3,32}$").expect("Unexpected error: failed to process regex");
 }
 
 pub fn route() -> impl Filter<Extract = (WithStatus<warp::reply::Json>,), Error = Rejection> + Clone
@@ -112,7 +110,7 @@ pub async fn handle(
                             }
                             let mut update_query = doc! {};
                             if let Some(username) = account_settings.username {
-                                if !RE.is_match(&username) {
+                                if !USERNAME_RE.is_match(&username.trim()) {
                                     return Ok(warp::reply::with_status(
                                         warp::reply::json(&AccountSettingsError {
                                             error: "Username is too long or contains invalid characters".to_string(),
@@ -123,7 +121,7 @@ pub async fn handle(
                                 let user = user_collection
                                     .find_one(
                                         doc! {
-                                            "username": username.clone()
+                                            "username": username.trim()
                                         },
                                         None,
                                     )
@@ -137,7 +135,7 @@ pub async fn handle(
                                             StatusCode::CONFLICT,
                                         ));
                                     }
-                                    update_query.insert("username", username);
+                                    update_query.insert("username", username.trim());
                                 } else {
                                     return Ok(warp::reply::with_status(
                                         warp::reply::json(&AccountSettingsError {
@@ -254,7 +252,7 @@ pub async fn handle(
                         }
                         let mut update_query = doc! {};
                         if let Some(username) = pending_mfa.previous_request.username.clone() {
-                            if !RE.is_match(&username) {
+                            if !USERNAME_RE.is_match(&username) {
                                 return Ok(warp::reply::with_status(
                                     warp::reply::json(&AccountSettingsError {
                                         error: "Username is too long or contains invalid characters".to_string(),

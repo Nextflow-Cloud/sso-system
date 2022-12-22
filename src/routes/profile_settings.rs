@@ -130,7 +130,7 @@ pub async fn handle(
                 let mut update_query = doc! {};
                 let display_name = form.get("display_name");
                 if let Some(display_name) = display_name {
-                    if display_name.len() > 64 {
+                    if display_name.trim().len() > 64 {
                         let response = ProfileSettingsError {
                             error: "Display name too long".to_string(),
                         };
@@ -139,11 +139,11 @@ pub async fn handle(
                             StatusCode::BAD_REQUEST,
                         ));
                     }
-                    update_query.insert("display_name", display_name);
+                    update_query.insert("display_name", display_name.trim());
                 }
                 let description = form.get("description");
                 if let Some(description) = description {
-                    if description.len() > 2048 {
+                    if description.trim().len() > 2048 {
                         let response = ProfileSettingsError {
                             error: "Description too long".to_string(),
                         };
@@ -152,11 +152,11 @@ pub async fn handle(
                             StatusCode::BAD_REQUEST,
                         ));
                     }
-                    update_query.insert("description", description);
+                    update_query.insert("description", description.trim());
                 }
                 let website = form.get("website");
                 if let Some(website) = website {
-                    if website.len() > 256 {
+                    if website.trim().len() > 256 {
                         let response = ProfileSettingsError {
                             error: "Website too long".to_string(),
                         };
@@ -165,7 +165,7 @@ pub async fn handle(
                             StatusCode::BAD_REQUEST,
                         ));
                     }
-                    update_query.insert("website", website);
+                    update_query.insert("website", website.trim());
                 }
                 let avatar = form.get("avatar");
                 if let Some(avatar) = avatar {

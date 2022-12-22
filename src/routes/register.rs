@@ -15,7 +15,7 @@ use warp::{
 use crate::{
     database::{profile::UserProfile, user::User},
     environment::{HCAPTCHA_SECRET, JWT_SECRET, ROOT_DOMAIN, SALT},
-    utilities::{generate_id, vec_to_array},
+    utilities::{generate_id, vec_to_array, USERNAME_RE, EMAIL_RE},
 };
 
 use super::login::UserJwt;
@@ -93,19 +93,58 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
                     .await;
                 if let Ok(user) = user {
                     if user.is_none() {
+                        if register.display_name.trim().len() > 64 {
+                            let error = RegisterError {
+                                error: "Display name too long".to_string(),
+                            };
+                            return Ok(warp::reply::with_header(
+                                warp::reply::with_status(
+                                    warp::reply::json(&error),
+                                    StatusCode::INTERNAL_SERVER_ERROR,
+                                ),
+                                "",
+                                "",
+                            ));
+                        }
+                        if !USERNAME_RE.is_match(&register.username.trim()) {
+                            let error = RegisterError {
+                                error: "Username is too long or contains invalid characters".to_string(),
+                            };
+                            return Ok(warp::reply::with_header(
+                                warp::reply::with_status(
+                                    warp::reply::json(&error),
+                                    StatusCode::INTERNAL_SERVER_ERROR,
+                                ),
+                                "",
+                                "",
+                            ));
+                        }
+                        if !EMAIL_RE.is_match(&register.email.trim()) {
+                            let error = RegisterError {
+                                error: "Email is invalid".to_string(),
+                            };
+                            return Ok(warp::reply::with_header(
+                                warp::reply::with_status(
+                                    warp::reply::json(&error),
+                                    StatusCode::INTERNAL_SERVER_ERROR,
+                                ),
+                                "",
+                                "",
+                            ));
+                        }
                         let user_id = generate_id();
                         let user_document = User {
                             id: user_id.clone(),
                             mfa_enabled: false,
                             mfa_secret: None,
                             username: register.username,
-                            email_hash: hashed.to_string(),
+                            email: register.email.trim().to_string(),
                             password_hash: password_hash.to_string(),
                             public_email: false,
                         };
                         let profile_document = UserProfile {
                             id: user_id.clone(),
-                            display_name: register.display_name,
+                            display_name: register.display_name.trim().to_string(),
                             description: String::new(),
                             website: String::new(),
                             // TODO: default avatar
