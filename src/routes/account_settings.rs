@@ -110,7 +110,7 @@ pub async fn handle(
                             }
                             let mut update_query = doc! {};
                             if let Some(username) = account_settings.username {
-                                if !USERNAME_RE.is_match(&username.trim()) {
+                                if !USERNAME_RE.is_match(username.trim()) {
                                     return Ok(warp::reply::with_status(
                                         warp::reply::json(&AccountSettingsError {
                                             error: "Username is too long or contains invalid characters".to_string(),
@@ -252,7 +252,7 @@ pub async fn handle(
                         }
                         let mut update_query = doc! {};
                         if let Some(username) = pending_mfa.previous_request.username.clone() {
-                            if !USERNAME_RE.is_match(&username) {
+                            if !USERNAME_RE.is_match(username.trim()) {
                                 return Ok(warp::reply::with_status(
                                     warp::reply::json(&AccountSettingsError {
                                         error: "Username is too long or contains invalid characters".to_string(),
@@ -263,7 +263,7 @@ pub async fn handle(
                             let user = get_collection()
                                 .find_one(
                                     doc! {
-                                        "username": username.clone()
+                                        "username": username.trim()
                                     },
                                     None,
                                 )
@@ -277,7 +277,7 @@ pub async fn handle(
                                         StatusCode::CONFLICT,
                                     ));
                                 }
-                                update_query.insert("username", username);
+                                update_query.insert("username", username.trim());
                             } else {
                                 return Ok(warp::reply::with_status(
                                     warp::reply::json(&AccountSettingsError {

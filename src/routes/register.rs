@@ -72,7 +72,7 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
             let response: HCaptchaResponse = serde_json::from_str(&text)
                 .expect("Unexpected error: failed to convert response into JSON");
             if response.success {
-                if !EMAIL_RE.is_match(&register.email.trim()) {
+                if !EMAIL_RE.is_match(register.email.trim()) {
                     let error = RegisterError {
                         error: "Email is invalid".to_string(),
                     };
@@ -119,22 +119,9 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
                                 "",
                             ));
                         }
-                        if !USERNAME_RE.is_match(&register.username.trim()) {
+                        if !USERNAME_RE.is_match(register.username.trim()) {
                             let error = RegisterError {
                                 error: "Username is too long or contains invalid characters".to_string(),
-                            };
-                            return Ok(warp::reply::with_header(
-                                warp::reply::with_status(
-                                    warp::reply::json(&error),
-                                    StatusCode::INTERNAL_SERVER_ERROR,
-                                ),
-                                "",
-                                "",
-                            ));
-                        }
-                        if !EMAIL_RE.is_match(&register.email.trim()) {
-                            let error = RegisterError {
-                                error: "Email is invalid".to_string(),
                             };
                             return Ok(warp::reply::with_header(
                                 warp::reply::with_status(
