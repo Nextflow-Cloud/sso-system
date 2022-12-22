@@ -79,7 +79,7 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
                     return Ok(warp::reply::with_header(
                         warp::reply::with_status(
                             warp::reply::json(&error),
-                            StatusCode::INTERNAL_SERVER_ERROR,
+                            StatusCode::BAD_REQUEST,
                         ),
                         "",
                         "",
@@ -113,7 +113,7 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
                             return Ok(warp::reply::with_header(
                                 warp::reply::with_status(
                                     warp::reply::json(&error),
-                                    StatusCode::INTERNAL_SERVER_ERROR,
+                                    StatusCode::BAD_REQUEST,
                                 ),
                                 "",
                                 "",
@@ -126,7 +126,7 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
                             return Ok(warp::reply::with_header(
                                 warp::reply::with_status(
                                     warp::reply::json(&error),
-                                    StatusCode::INTERNAL_SERVER_ERROR,
+                                    StatusCode::BAD_REQUEST,
                                 ),
                                 "",
                                 "",
