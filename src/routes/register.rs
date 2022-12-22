@@ -72,10 +72,23 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
             let response: HCaptchaResponse = serde_json::from_str(&text)
                 .expect("Unexpected error: failed to convert response into JSON");
             if response.success {
+                if !EMAIL_RE.is_match(&register.email.trim()) {
+                    let error = RegisterError {
+                        error: "Email is invalid".to_string(),
+                    };
+                    return Ok(warp::reply::with_header(
+                        warp::reply::with_status(
+                            warp::reply::json(&error),
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                        ),
+                        "",
+                        "",
+                    ));
+                }
                 let salt_bytes =
                     decode(&*SALT).expect("Unexpected error: failed to convert salt to bytes");
                 let hashed = hash_with_salt(
-                    register.email.clone(),
+                    register.email.trim(),
                     DEFAULT_COST,
                     vec_to_array::<u8, 16>(salt_bytes),
                 )
@@ -138,7 +151,7 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
                             mfa_enabled: false,
                             mfa_secret: None,
                             username: register.username,
-                            email: register.email.trim().to_string(),
+                            email_hash: hashed.to_string(),
                             password_hash: password_hash.to_string(),
                             public_email: false,
                         };
