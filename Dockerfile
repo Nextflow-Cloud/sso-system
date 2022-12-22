@@ -1,6 +1,6 @@
-FROM node:16.13.2-bullseye
-WORKDIR /sso-system
-COPY . /sso-system 
-RUN yarn install
-ENTRYPOINT [ "node", "index.js" ]
-EXPOSE 3000
+FROM rust:1.63.0
+
+WORKDIR /usr/app
+COPY . .
+RUN cargo install --path .
+CMD ["sso-system"]
