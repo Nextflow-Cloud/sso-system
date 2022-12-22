@@ -15,7 +15,7 @@ use warp::{
 use crate::{
     database::{profile::UserProfile, user::User},
     environment::{HCAPTCHA_SECRET, JWT_SECRET, ROOT_DOMAIN, SALT},
-    utilities::{generate_id, vec_to_array, USERNAME_RE, EMAIL_RE},
+    utilities::{generate_id, vec_to_array, EMAIL_RE, USERNAME_RE},
 };
 
 use super::login::UserJwt;
@@ -121,7 +121,8 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
                         }
                         if !USERNAME_RE.is_match(register.username.trim()) {
                             let error = RegisterError {
-                                error: "Username is too long or contains invalid characters".to_string(),
+                                error: "Username is too long or contains invalid characters"
+                                    .to_string(),
                             };
                             return Ok(warp::reply::with_header(
                                 warp::reply::with_status(

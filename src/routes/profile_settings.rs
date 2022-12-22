@@ -171,11 +171,9 @@ pub async fn handle(
                 if let Some(avatar) = avatar {
                     update_query.insert("avatar", avatar);
                 }
-                let result = collection.update_one(
-                    doc! {"id": jwt.jwt_content.id},
-                    update_query,
-                    None
-                ).await;
+                let result = collection
+                    .update_one(doc! {"id": jwt.jwt_content.id}, update_query, None)
+                    .await;
                 if result.is_ok() {
                     let response = ProfileSettingsResponse { success: true };
                     Ok(warp::reply::with_status(

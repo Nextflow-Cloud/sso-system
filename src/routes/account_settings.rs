@@ -255,7 +255,9 @@ pub async fn handle(
                             if !USERNAME_RE.is_match(username.trim()) {
                                 return Ok(warp::reply::with_status(
                                     warp::reply::json(&AccountSettingsError {
-                                        error: "Username is too long or contains invalid characters".to_string(),
+                                        error:
+                                            "Username is too long or contains invalid characters"
+                                                .to_string(),
                                     }),
                                     StatusCode::BAD_REQUEST,
                                 ));
@@ -288,9 +290,8 @@ pub async fn handle(
                             }
                         }
                         if let Some(password) = pending_mfa.previous_request.new_password.clone() {
-                            let new_password_hash =
-                                bcrypt::hash(password, bcrypt::DEFAULT_COST)
-                                    .expect("Unexpected error: failed to hash password");
+                            let new_password_hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)
+                                .expect("Unexpected error: failed to hash password");
                             update_query.insert("password_hash", new_password_hash);
                         }
                         if let Some(public_email) = pending_mfa.previous_request.public_email {
@@ -363,4 +364,3 @@ pub async fn handle(
         ))
     }
 }
-
