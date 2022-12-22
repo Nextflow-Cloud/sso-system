@@ -54,7 +54,7 @@ async fn multipart_form(user_id: String, parts: Vec<Part>) -> Option<HashMap<Str
                         .to_string(),
                 );
             } else {
-                println!("invalid file type found: {}", content_type);
+                println!("invalid file type found: {content_type}");
                 return None;
             }
         }
@@ -66,7 +66,7 @@ async fn multipart_form(user_id: String, parts: Vec<Part>) -> Option<HashMap<Str
             })
             .await
             .map_err(|e| {
-                println!("reading file error: {}", e);
+                println!("reading file error: {e}");
             })
             .unwrap();
         if file_extension.is_some() {
@@ -77,7 +77,7 @@ async fn multipart_form(user_id: String, parts: Vec<Part>) -> Option<HashMap<Str
             async_std::fs::write(&file_path, value)
                 .await
                 .map_err(|e| {
-                    println!("error writing file: {}", e);
+                    println!("error writing file: {e}");
                 })
                 .unwrap();
             vars.insert(field_name, new_filename);
@@ -127,19 +127,53 @@ pub async fn handle(
                         StatusCode::NOT_FOUND,
                     ));
                 }
-                let profile = profile.unwrap();
-                let result = collection.update_one(
-                    doc! {"id": jwt.jwt_content.id},
-                    doc! {
-                        "$set": {
-                            "display_name": form.get("display_name").unwrap_or(&profile.display_name),
-                            "description": form.get("description").unwrap_or(&profile.description),
-                            "website": form.get("website").unwrap_or(&profile.website),
-                            "avatar": form.get("avatar").unwrap_or(&profile.avatar)
-                        }
-                    },
-                    None
-                ).await;
+                let mut update_query = doc! {};
+                let display_name = form.get("display_name");
+                if let Some(display_name) = display_name {
+                    if display_name.trim().len() > 64 {
+                        let response = ProfileSettingsError {
+                            error: "Display name too long".to_string(),
+                        };
+                        return Ok(warp::reply::with_status(
+                            warp::reply::json(&response),
+                            StatusCode::BAD_REQUEST,
+                        ));
+                    }
+                    update_query.insert("display_name", display_name.trim());
+                }
+                let description = form.get("description");
+                if let Some(description) = description {
+                    if description.trim().len() > 2048 {
+                        let response = ProfileSettingsError {
+                            error: "Description too long".to_string(),
+                        };
+                        return Ok(warp::reply::with_status(
+                            warp::reply::json(&response),
+                            StatusCode::BAD_REQUEST,
+                        ));
+                    }
+                    update_query.insert("description", description.trim());
+                }
+                let website = form.get("website");
+                if let Some(website) = website {
+                    if website.trim().len() > 256 {
+                        let response = ProfileSettingsError {
+                            error: "Website too long".to_string(),
+                        };
+                        return Ok(warp::reply::with_status(
+                            warp::reply::json(&response),
+                            StatusCode::BAD_REQUEST,
+                        ));
+                    }
+                    update_query.insert("website", website.trim());
+                }
+                let avatar = form.get("avatar");
+                if let Some(avatar) = avatar {
+                    update_query.insert("avatar", avatar);
+                }
+                let result = collection
+                    .update_one(doc! {"id": jwt.jwt_content.id}, update_query, None)
+                    .await;
                 if result.is_ok() {
                     let response = ProfileSettingsResponse { success: true };
                     Ok(warp::reply::with_status(

@@ -7,6 +7,7 @@ static COLLECTION: OnceCell<Collection<User>> = OnceCell::new();
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct User {
     pub id: String,
+    // TODO: Unfortunately, stop using email hashes for spam prevention and public email
     pub email_hash: String,
     pub password_hash: String,
     pub username: String,

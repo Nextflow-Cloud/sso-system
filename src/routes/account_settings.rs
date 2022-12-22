@@ -16,7 +16,7 @@ use warp::{
 use crate::{
     authenticate::{authenticate, Authenticate},
     database::user::{get_collection, User},
-    utilities::generate_id,
+    utilities::{generate_id, USERNAME_RE},
 };
 
 #[derive(Deserialize, Serialize)]
@@ -108,11 +108,20 @@ pub async fn handle(
                                     StatusCode::OK,
                                 ));
                             }
+                            let mut update_query = doc! {};
                             if let Some(username) = account_settings.username {
+                                if !USERNAME_RE.is_match(username.trim()) {
+                                    return Ok(warp::reply::with_status(
+                                        warp::reply::json(&AccountSettingsError {
+                                            error: "Username is too long or contains invalid characters".to_string(),
+                                        }),
+                                        StatusCode::BAD_REQUEST,
+                                    ));
+                                }
                                 let user = user_collection
                                     .find_one(
                                         doc! {
-                                            "username": username.clone()
+                                            "username": username.trim()
                                         },
                                         None,
                                     )
@@ -125,29 +134,8 @@ pub async fn handle(
                                             }),
                                             StatusCode::CONFLICT,
                                         ));
-                                    } else {
-                                        let update = user_collection
-                                            .update_one(
-                                                doc! {
-                                                    "id": jwt.jwt_content.id.clone()
-                                                },
-                                                doc! {
-                                                    "$set": {
-                                                        "username": username
-                                                    }
-                                                },
-                                                None,
-                                            )
-                                            .await;
-                                        if update.is_err() {
-                                            return Ok(warp::reply::with_status(
-                                                warp::reply::json(&AccountSettingsError {
-                                                    error: "Failed to update username".to_string(),
-                                                }),
-                                                StatusCode::INTERNAL_SERVER_ERROR,
-                                            ));
-                                        }
                                     }
+                                    update_query.insert("username", username.trim());
                                 } else {
                                     return Ok(warp::reply::with_status(
                                         warp::reply::json(&AccountSettingsError {
@@ -161,50 +149,27 @@ pub async fn handle(
                                 let new_password_hash =
                                     bcrypt::hash(password, bcrypt::DEFAULT_COST)
                                         .expect("Unexpected error: failed to hash password");
-                                let update_result = user_collection
-                                    .update_one(
-                                        doc! {
-                                            "id": jwt.jwt_content.id.clone()
-                                        },
-                                        doc! {
-                                            "$set": {
-                                                "password_hash": new_password_hash
-                                            }
-                                        },
-                                        None,
-                                    )
-                                    .await;
-                                if update_result.is_err() {
-                                    return Ok(warp::reply::with_status(
-                                        warp::reply::json(&AccountSettingsError {
-                                            error: "Password update failed".to_string(),
-                                        }),
-                                        StatusCode::INTERNAL_SERVER_ERROR,
-                                    ));
-                                }
+                                update_query.insert("password_hash", new_password_hash);
                             }
                             if let Some(public_email) = account_settings.public_email {
-                                let update_result = user_collection
-                                    .update_one(
-                                        doc! {
-                                            "id": jwt.jwt_content.id
-                                        },
-                                        doc! {
-                                            "$set": {
-                                                "public_email": public_email
-                                            }
-                                        },
-                                        None,
-                                    )
-                                    .await;
-                                if update_result.is_err() {
-                                    return Ok(warp::reply::with_status(
-                                        warp::reply::json(&AccountSettingsError {
-                                            error: "Public email update failed".to_string(),
-                                        }),
-                                        StatusCode::INTERNAL_SERVER_ERROR,
-                                    ));
-                                }
+                                update_query.insert("public_email", public_email);
+                            }
+                            let update = user_collection
+                                .update_one(
+                                    doc! {
+                                        "id": jwt.jwt_content.id.clone()
+                                    },
+                                    update_query,
+                                    None,
+                                )
+                                .await;
+                            if update.is_err() {
+                                return Ok(warp::reply::with_status(
+                                    warp::reply::json(&AccountSettingsError {
+                                        error: "Failed to update user".to_string(),
+                                    }),
+                                    StatusCode::INTERNAL_SERVER_ERROR,
+                                ));
                             }
                             Ok(warp::reply::with_status(
                                 warp::reply::json(&AccountSettingsResponse {
@@ -213,7 +178,6 @@ pub async fn handle(
                                 }),
                                 StatusCode::OK,
                             ))
-                            // TODO: enforce username length limits
                         } else {
                             Ok(warp::reply::with_status(
                                 warp::reply::json(&AccountSettingsError {
@@ -286,11 +250,22 @@ pub async fn handle(
                                 StatusCode::UNAUTHORIZED,
                             ));
                         }
+                        let mut update_query = doc! {};
                         if let Some(username) = pending_mfa.previous_request.username.clone() {
+                            if !USERNAME_RE.is_match(username.trim()) {
+                                return Ok(warp::reply::with_status(
+                                    warp::reply::json(&AccountSettingsError {
+                                        error:
+                                            "Username is too long or contains invalid characters"
+                                                .to_string(),
+                                    }),
+                                    StatusCode::BAD_REQUEST,
+                                ));
+                            }
                             let user = get_collection()
                                 .find_one(
                                     doc! {
-                                        "username": username.clone()
+                                        "username": username.trim()
                                     },
                                     None,
                                 )
@@ -303,29 +278,8 @@ pub async fn handle(
                                         }),
                                         StatusCode::CONFLICT,
                                     ));
-                                } else {
-                                    let update = get_collection()
-                                        .update_one(
-                                            doc! {
-                                                "id": jwt.jwt_content.id.clone()
-                                            },
-                                            doc! {
-                                                "$set": {
-                                                    "username": username
-                                                }
-                                            },
-                                            None,
-                                        )
-                                        .await;
-                                    if update.is_err() {
-                                        return Ok(warp::reply::with_status(
-                                            warp::reply::json(&AccountSettingsError {
-                                                error: "Failed to update username".to_string(),
-                                            }),
-                                            StatusCode::INTERNAL_SERVER_ERROR,
-                                        ));
-                                    }
                                 }
+                                update_query.insert("username", username.trim());
                             } else {
                                 return Ok(warp::reply::with_status(
                                     warp::reply::json(&AccountSettingsError {
@@ -338,50 +292,27 @@ pub async fn handle(
                         if let Some(password) = pending_mfa.previous_request.new_password.clone() {
                             let new_password_hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)
                                 .expect("Unexpected error: failed to hash password");
-                            let update_result = get_collection()
-                                .update_one(
-                                    doc! {
-                                        "id": jwt.jwt_content.id.clone()
-                                    },
-                                    doc! {
-                                        "$set": {
-                                            "password_hash": new_password_hash
-                                        }
-                                    },
-                                    None,
-                                )
-                                .await;
-                            if update_result.is_err() {
-                                return Ok(warp::reply::with_status(
-                                    warp::reply::json(&AccountSettingsError {
-                                        error: "Password update failed".to_string(),
-                                    }),
-                                    StatusCode::INTERNAL_SERVER_ERROR,
-                                ));
-                            }
+                            update_query.insert("password_hash", new_password_hash);
                         }
                         if let Some(public_email) = pending_mfa.previous_request.public_email {
-                            let update_result = get_collection()
-                                .update_one(
-                                    doc! {
-                                        "id": jwt.jwt_content.id
-                                    },
-                                    doc! {
-                                        "$set": {
-                                            "public_email": public_email
-                                        }
-                                    },
-                                    None,
-                                )
-                                .await;
-                            if update_result.is_err() {
-                                return Ok(warp::reply::with_status(
-                                    warp::reply::json(&AccountSettingsError {
-                                        error: "Public email update failed".to_string(),
-                                    }),
-                                    StatusCode::INTERNAL_SERVER_ERROR,
-                                ));
-                            }
+                            update_query.insert("public_email", public_email);
+                        }
+                        let update = get_collection()
+                            .update_one(
+                                doc! {
+                                    "id": jwt.jwt_content.id.clone()
+                                },
+                                update_query,
+                                None,
+                            )
+                            .await;
+                        if update.is_err() {
+                            return Ok(warp::reply::with_status(
+                                warp::reply::json(&AccountSettingsError {
+                                    error: "Failed to update user".to_string(),
+                                }),
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                            ));
                         }
                         drop(pending_mfa);
                         PENDING_MFAS.remove(&continue_token);
