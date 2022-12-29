@@ -250,12 +250,15 @@ pub async fn handle(jwt: Option<Authenticate>, mfa: Mfa) -> Result<impl Reply, w
                                     StatusCode::UNAUTHORIZED,
                                 ));
                             }
+                            let secret = Secret::Encoded(
+                                disable_session.user.mfa_secret.as_ref().unwrap().clone(),
+                            );
                             let totp = TOTP::new(
                                 totp_rs::Algorithm::SHA256,
                                 8,
                                 1,
                                 30,
-                                disable_session.user.mfa_secret.as_ref().unwrap(),
+                                secret.to_bytes().unwrap(),
                                 Some("Nextflow Cloud Technologies".to_string()),
                                 disable_session.user.id.clone(),
                             )
