@@ -1,5 +1,4 @@
-use base64::decode;
-use bcrypt::{hash_with_salt, verify, DEFAULT_COST};
+use bcrypt::verify;
 use dashmap::DashMap;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use lazy_static::lazy_static;
@@ -15,8 +14,8 @@ use warp::{
 
 use crate::{
     database::user::User,
-    environment::{JWT_SECRET, ROOT_DOMAIN, SALT},
-    utilities::{generate_id, vec_to_array},
+    environment::{JWT_SECRET, ROOT_DOMAIN},
+    utilities::generate_id,
 };
 
 #[derive(Deserialize, Serialize)]
@@ -73,19 +72,11 @@ pub async fn handle(login: Login) -> Result<WithHeader<WithStatus<Json>>, warp::
     match login.stage {
         1 => {
             let collection = crate::database::user::get_collection();
-            let salt_bytes =
-                decode(&*SALT).expect("Unexpected error: failed to convert salt to bytes");
             if let Some(email) = login.email {
-                let hashed = hash_with_salt(
-                    email.clone(),
-                    DEFAULT_COST,
-                    vec_to_array::<u8, 16>(salt_bytes),
-                )
-                .expect("Unexpected error: failed to hash");
                 let result = collection
                     .find_one(
                         doc! {
-                            "email_hash": hashed.to_string()
+                            "email": email.clone()
                         },
                         None,
                     )

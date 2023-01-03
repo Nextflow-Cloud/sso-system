@@ -11,7 +11,6 @@ services:
       - MONGODB_URI=mongodb://sso-system-mongodb:27017
       - MONGODB_DATABASE=sso
       - JWT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-      - SALT=xxxxxxxxxxxxxxxxxxxxxxxx
       - HCAPTCHA_SECRET=0x0000000000000000000000000000000000000000
       - CORS_ORIGINS=https://www.example.com
       - ROOT_DOMAIN=example.com

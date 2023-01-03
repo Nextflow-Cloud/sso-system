@@ -1,7 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use base64::decode;
-use bcrypt::{hash, hash_with_salt, DEFAULT_COST};
+use bcrypt::{hash, DEFAULT_COST};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use mongodb::bson::doc;
 use reqwest;
@@ -14,8 +13,8 @@ use warp::{
 
 use crate::{
     database::{profile::UserProfile, user::User},
-    environment::{HCAPTCHA_SECRET, JWT_SECRET, ROOT_DOMAIN, SALT},
-    utilities::{generate_id, vec_to_array, EMAIL_RE, USERNAME_RE},
+    environment::{HCAPTCHA_SECRET, JWT_SECRET, ROOT_DOMAIN},
+    utilities::{generate_id, EMAIL_RE, USERNAME_RE},
 };
 
 use super::login::UserJwt;
@@ -85,21 +84,13 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
                         "",
                     ));
                 }
-                let salt_bytes =
-                    decode(&*SALT).expect("Unexpected error: failed to convert salt to bytes");
-                let hashed = hash_with_salt(
-                    register.email.trim(),
-                    DEFAULT_COST,
-                    vec_to_array::<u8, 16>(salt_bytes),
-                )
-                .expect("Unexpected error: failed to hash");
                 let password_hash = hash(register.password, DEFAULT_COST)
                     .expect("Unexpected error: failed to hash");
                 let collection = crate::database::user::get_collection();
                 let user = collection
                     .find_one(
                         doc! {
-                            "email_hash": hashed.to_string()
+                            "email": register.email.clone()
                         },
                         None,
                     )
@@ -139,7 +130,7 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
                             mfa_enabled: false,
                             mfa_secret: None,
                             username: register.username,
-                            email_hash: hashed.to_string(),
+                            email: register.email.trim().to_string(),
                             password_hash: password_hash.to_string(),
                             public_email: false,
                         };
