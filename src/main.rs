@@ -1,6 +1,7 @@
 use actix_cors::Cors;
 use actix_files::Files;
 use actix_web::{HttpServer, App, middleware::Logger, web};
+use async_std::task;
 use log::info;
 
 use crate::{environment::{CORS_ORIGINS, HOST}, authenticate::JwtAuthentication};
@@ -11,6 +12,7 @@ pub mod environment;
 pub mod routes;
 pub mod utilities;
 pub mod errors;
+pub mod cleanup;
 
 #[async_std::main]
 async fn main() {
@@ -19,6 +21,14 @@ async fn main() {
     info!("Nextflow SSO system version {}", env!("CARGO_PKG_VERSION"));
     info!("Connecting to MongoDB...");
     database::connect().await;
+
+    info!("Spawning task to clean up expired entities...");
+    task::spawn(async {
+        loop {
+            task::spawn(async { cleanup::run() });
+            task::sleep(std::time::Duration::from_secs(60)).await;
+        }
+    });
     
     info!("Starting server on {}...", *HOST);
     HttpServer::new(|| {
