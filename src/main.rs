@@ -25,8 +25,8 @@ async fn main() {
     info!("Spawning task to clean up expired entities...");
     task::spawn(async {
         loop {
-            task::spawn(async { cleanup::run() });
             task::sleep(std::time::Duration::from_secs(60)).await;
+            task::spawn(async { cleanup::run() });
         }
     });
     
@@ -48,8 +48,8 @@ async fn main() {
                             })
                             .is_some()
                     })
-                    .allowed_methods(vec!["GET", "POST"])
-                    .allowed_headers(["Authorization", "Accept", "Content-Type"])
+                    .allow_any_method()
+                    .allow_any_header()
                     .supports_credentials(),
             )
             .wrap(JwtAuthentication)
