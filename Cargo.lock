@@ -35,6 +35,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-extensible-rate-limit"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ea990351e38b399d3d1a96eef5e8feba721974a4319f6c66186b05782f6a05b"
+dependencies = [
+ "actix-web",
+ "async-trait",
+ "dashmap",
+ "futures",
+ "log",
+ "once_cell",
+ "thiserror",
+]
+
+[[package]]
 name = "actix-files"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1010,12 +1025,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "futures"
+version = "0.3.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38390104763dc37a5145a53c29c63c1290b5d316d6086ec32c293f6736051bb0"
+dependencies = [
+ "futures-channel",
+ "futures-core",
+ "futures-executor",
+ "futures-io",
+ "futures-sink",
+ "futures-task",
+ "futures-util",
+]
+
+[[package]]
 name = "futures-channel"
 version = "0.3.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52ba265a92256105f45b719605a571ffe2d1f0fea3807304b522c1d778f79eed"
 dependencies = [
  "futures-core",
+ "futures-sink",
 ]
 
 [[package]]
@@ -1085,9 +1116,11 @@ version = "0.3.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "197676987abd2f9cadff84926f410af1c183608d36641465df73ae8211dc65d6"
 dependencies = [
+ "futures-channel",
  "futures-core",
  "futures-io",
  "futures-macro",
+ "futures-sink",
  "futures-task",
  "memchr",
  "pin-project-lite",
@@ -2431,6 +2464,7 @@ name = "sso-system"
 version = "0.1.0"
 dependencies = [
  "actix-cors",
+ "actix-extensible-rate-limit",
  "actix-files",
  "actix-web",
  "aes-gcm",

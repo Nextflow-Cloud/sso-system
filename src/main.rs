@@ -1,4 +1,10 @@
+use std::time::Duration;
+
 use actix_cors::Cors;
+use actix_extensible_rate_limit::{
+    backend::{memory::InMemoryBackend, SimpleInputFunctionBuilder},
+    RateLimiter,
+};
 use actix_files::Files;
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use async_std::task;
@@ -35,6 +41,10 @@ async fn main() {
     
     info!("Starting server on {}...", *HOST);
     HttpServer::new(|| {
+        let backend = InMemoryBackend::builder().build();
+        let input = SimpleInputFunctionBuilder::new(Duration::from_secs(5), 3)
+            .real_ip_key()
+            .build();
         App::new()
             .wrap(
                 Cors::default()
@@ -55,6 +65,7 @@ async fn main() {
                     .allow_any_header()
                     .supports_credentials(),
             )
+            .wrap(RateLimiter::builder(backend, input).add_headers().build())
             .wrap(JwtAuthentication)
             .wrap(Logger::default())
             .service(Files::new("/bundle", "bundle"))
