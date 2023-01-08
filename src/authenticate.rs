@@ -124,7 +124,7 @@ where
         Box::pin(async move {
             let token = get_token(&req).await;
             req.extensions_mut().insert(token);
-            Ok(svc.call(req).await?)
+            svc.call(req).await
         })
     }
 }

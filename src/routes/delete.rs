@@ -58,57 +58,53 @@ pub async fn handle(
                     None,
                 )
                 .await;
-            if let Ok(user) = user {
-                if let Some(user) = user {
-                    let verified = verify(password, &user.password_hash)
-                        .expect("Unexpected error: failed to verify password");
-                    if verified {
-                        if user.mfa_enabled {
-                            let continue_token = ulid::Ulid::new().to_string();
-                            let duration = SystemTime::now()
-                                .duration_since(UNIX_EPOCH)
-                                .expect("Unexpected error: time went backwards");
-                            let delete_session = PendingDelete {
-                                id: jwt.jwt_content.id,
-                                mfa_secret: user.mfa_secret.unwrap(),
-                                time: duration.as_secs(),
-                            };
-                            PENDING_DELETES.insert(continue_token.clone(), delete_session);
-                            Ok(web::Json(DeleteResponse {
-                                continue_token: Some(continue_token),
-                                success: None,
-                            }))
-                        } else {
-                            let blacklist = blacklist::get_collection();
-                            let blacklist_result = blacklist
-                                .insert_one(Blacklist { token: jwt.jwt }, None)
+            if let Ok(Some(user)) = user {
+                let verified = verify(password, &user.password_hash)
+                    .expect("Unexpected error: failed to verify password");
+                if verified {
+                    if user.mfa_enabled {
+                        let continue_token = ulid::Ulid::new().to_string();
+                        let duration = SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .expect("Unexpected error: time went backwards");
+                        let delete_session = PendingDelete {
+                            id: jwt.jwt_content.id,
+                            mfa_secret: user.mfa_secret.unwrap(),
+                            time: duration.as_secs(),
+                        };
+                        PENDING_DELETES.insert(continue_token.clone(), delete_session);
+                        Ok(web::Json(DeleteResponse {
+                            continue_token: Some(continue_token),
+                            success: None,
+                        }))
+                    } else {
+                        let blacklist = blacklist::get_collection();
+                        let blacklist_result = blacklist
+                            .insert_one(Blacklist { token: jwt.jwt }, None)
+                            .await;
+                        if blacklist_result.is_ok() {
+                            let result = collection
+                                .delete_one(
+                                    doc! {
+                                        "id": jwt.jwt_content.id
+                                    },
+                                    None,
+                                )
                                 .await;
-                            if blacklist_result.is_ok() {
-                                let result = collection
-                                    .delete_one(
-                                        doc! {
-                                            "id": jwt.jwt_content.id
-                                        },
-                                        None,
-                                    )
-                                    .await;
-                                if result.is_ok() {
-                                    Ok(web::Json(DeleteResponse {
-                                        success: Some(true),
-                                        continue_token: None,
-                                    }))
-                                } else {
-                                    Err(Error::DatabaseError)
-                                }
+                            if result.is_ok() {
+                                Ok(web::Json(DeleteResponse {
+                                    success: Some(true),
+                                    continue_token: None,
+                                }))
                             } else {
                                 Err(Error::DatabaseError)
                             }
+                        } else {
+                            Err(Error::DatabaseError)
                         }
-                    } else {
-                        Err(Error::IncorrectPassword)
                     }
                 } else {
-                    Err(Error::DatabaseError)
+                    Err(Error::IncorrectPassword)
                 }
             } else {
                 Err(Error::DatabaseError)

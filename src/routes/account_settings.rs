@@ -60,84 +60,80 @@ pub async fn handle(
                 None,
             )
             .await;
-        if let Ok(user) = user {
-            if let Some(user) = user {
-                if let Some(current_password) = account_settings.current_password.clone() {
-                    let verified = verify(current_password, &user.password_hash)
-                        .expect("Unexpected error: failed to verify password");
-                    if verified {
-                        if user.mfa_enabled {
-                            let continue_token = ulid::Ulid::new().to_string();
-                            PENDING_MFAS.insert(
-                                continue_token.clone(),
-                                PendingMfa {
-                                    time: std::time::SystemTime::now()
-                                        .duration_since(std::time::UNIX_EPOCH)
-                                        .unwrap()
-                                        .as_secs(),
-                                    previous_request: account_settings,
-                                    user,
-                                },
-                            );
-                            return Ok(web::Json(AccountSettingsResponse {
-                                success: None,
-                                continue_token: Some(continue_token),
-                            }));
+        if let Ok(Some(user)) = user {
+            if let Some(current_password) = account_settings.current_password.clone() {
+                let verified = verify(current_password, &user.password_hash)
+                    .expect("Unexpected error: failed to verify password");
+                if verified {
+                    if user.mfa_enabled {
+                        let continue_token = ulid::Ulid::new().to_string();
+                        PENDING_MFAS.insert(
+                            continue_token.clone(),
+                            PendingMfa {
+                                time: std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .unwrap()
+                                    .as_secs(),
+                                previous_request: account_settings,
+                                user,
+                            },
+                        );
+                        return Ok(web::Json(AccountSettingsResponse {
+                            success: None,
+                            continue_token: Some(continue_token),
+                        }));
+                    }
+                    let mut update_query = doc! {};
+                    if let Some(username) = account_settings.username {
+                        if !USERNAME_RE.is_match(username.trim()) {
+                            return Err(Error::InvalidUsername);
                         }
-                        let mut update_query = doc! {};
-                        if let Some(username) = account_settings.username {
-                            if !USERNAME_RE.is_match(username.trim()) {
-                                return Err(Error::InvalidUsername);
-                            }
-                            let user = user_collection
-                                .find_one(
-                                    doc! {
-                                        "username": username.trim()
-                                    },
-                                    None,
-                                )
-                                .await;
-                            if let Ok(user) = user {
-                                if user.is_some() {
-                                    return Err(Error::UsernameAlreadyTaken);
-                                }
-                                update_query.insert("username", username.trim());
-                            } else {
-                                return Err(Error::DatabaseError);
-                            }
-                        }
-                        if let Some(password) = account_settings.new_password {
-                            let new_password_hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)
-                                .expect("Unexpected error: failed to hash password");
-                            update_query.insert("password_hash", new_password_hash);
-                        }
-                        if let Some(public_email) = account_settings.public_email {
-                            update_query.insert("public_email", public_email);
-                        }
-                        let update = user_collection
-                            .update_one(
+                        let user = user_collection
+                            .find_one(
                                 doc! {
-                                    "id": jwt.jwt_content.id.clone()
+                                    "username": username.trim()
                                 },
-                                update_query,
                                 None,
                             )
                             .await;
-                        if update.is_err() {
+                        if let Ok(user) = user {
+                            if user.is_some() {
+                                return Err(Error::UsernameAlreadyTaken);
+                            }
+                            update_query.insert("username", username.trim());
+                        } else {
                             return Err(Error::DatabaseError);
                         }
-                        Ok(web::Json(AccountSettingsResponse {
-                            success: Some(true),
-                            continue_token: None,
-                        }))
-                    } else {
-                        Err(Error::IncorrectPassword)
                     }
+                    if let Some(password) = account_settings.new_password {
+                        let new_password_hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)
+                            .expect("Unexpected error: failed to hash password");
+                        update_query.insert("password_hash", new_password_hash);
+                    }
+                    if let Some(public_email) = account_settings.public_email {
+                        update_query.insert("public_email", public_email);
+                    }
+                    let update = user_collection
+                        .update_one(
+                            doc! {
+                                "id": jwt.jwt_content.id.clone()
+                            },
+                            update_query,
+                            None,
+                        )
+                        .await;
+                    if update.is_err() {
+                        return Err(Error::DatabaseError);
+                    }
+                    Ok(web::Json(AccountSettingsResponse {
+                        success: Some(true),
+                        continue_token: None,
+                    }))
                 } else {
-                    Err(Error::MissingPassword)
+                    Err(Error::IncorrectPassword)
                 }
             } else {
-                Err(Error::DatabaseError)
+                Err(Error::MissingPassword)
             }
         } else {
             Err(Error::DatabaseError)

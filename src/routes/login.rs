@@ -142,7 +142,7 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                                 drop(pending_login);
                                 PENDING_LOGINS.remove(&continue_token);
                                 Ok(web::Json(LoginResponse {
-                                    token: Some(token.clone()),
+                                    token: Some(token),
                                     continue_token: None,
                                     mfa_enabled: Some(false),
                                 }))
@@ -210,7 +210,7 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                             drop(mfa_session);
                             PENDING_MFAS.remove(&continue_token);
                             Ok(web::Json(LoginResponse {
-                                token: Some(token.clone()),
+                                token: Some(token),
                                 continue_token: None,
                                 mfa_enabled: None,
                             }))

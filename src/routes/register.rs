@@ -104,7 +104,7 @@ pub async fn handle(register: web::Json<Register>) -> Result<impl Responder> {
                         let profile_result =
                             profile_collection.insert_one(profile_document, None).await;
                         if insert_result.is_err() || profile_result.is_err() {
-                            return Err(Error::DatabaseError);
+                            Err(Error::DatabaseError)
                         } else {
                             let duration = SystemTime::now()
                                 .duration_since(UNIX_EPOCH)

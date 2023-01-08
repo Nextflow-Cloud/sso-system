@@ -59,69 +59,65 @@ pub async fn handle(
         let user = collection
             .find_one(Some(doc! {"id": jwt.jwt_content.id}), None)
             .await;
-        if let Ok(user) = user {
-            if let Some(user) = user {
-                if let Some(password) = mfa.password {
-                    let verified = verify(password, &user.password_hash)
-                        .expect("Unexpected error: failed to verify password");
-                    if !verified {
-                        return Err(Error::IncorrectPassword);
-                    }
-                    if user.mfa_enabled {
-                        let continue_token = ulid::Ulid::new().to_string();
-                        let duration = SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .expect("Unexpected error: time went backwards");
-                        let login_session = PendingMfaDisable {
-                            time: duration.as_secs(),
-                            user,
-                        };
-                        PENDING_MFA_DISABLES.insert(continue_token.clone(), login_session);
-                        Ok(web::Json(MfaResponse {
-                            continue_token: Some(continue_token),
-                            success: None,
-                            qr: None,
-                            secret: None,
-                        }))
-                    } else {
-                        let secret = random_number(160);
-                        let totp = TOTP::new(
-                            totp_rs::Algorithm::SHA256,
-                            8,
-                            1,
-                            30,
-                            secret.clone(),
-                            Some("Nextflow Cloud Technologies".to_string()),
-                            user.username.clone(),
-                        )
-                        .expect("Unexpected error: failed to initiate TOTP");
-                        let qr = totp
-                            .get_qr()
-                            .expect("Unexpected error: failed to generate QR code");
-                        let continue_token = ulid::Ulid::new().to_string();
-                        let duration = SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .expect("Unexpected error: time went backwards");
-                        let code = Secret::Raw(secret.to_vec()).to_encoded().to_string();
-                        let session = PendingMfaEnable {
-                            time: duration.as_secs(),
-                            user,
-                            secret: code.clone(),
-                            totp,
-                        };
-                        PENDING_MFA_ENABLES.insert(continue_token.clone(), session);
-                        Ok(web::Json(MfaResponse {
-                            continue_token: Some(continue_token),
-                            qr: Some(qr),
-                            secret: Some(code),
-                            success: None,
-                        }))
-                    }
+        if let Ok(Some(user)) = user {
+            if let Some(password) = mfa.password {
+                let verified = verify(password, &user.password_hash)
+                    .expect("Unexpected error: failed to verify password");
+                if !verified {
+                    return Err(Error::IncorrectPassword);
+                }
+                if user.mfa_enabled {
+                    let continue_token = ulid::Ulid::new().to_string();
+                    let duration = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .expect("Unexpected error: time went backwards");
+                    let login_session = PendingMfaDisable {
+                        time: duration.as_secs(),
+                        user,
+                    };
+                    PENDING_MFA_DISABLES.insert(continue_token.clone(), login_session);
+                    Ok(web::Json(MfaResponse {
+                        continue_token: Some(continue_token),
+                        success: None,
+                        qr: None,
+                        secret: None,
+                    }))
                 } else {
-                    Err(Error::MissingPassword)
+                    let secret = random_number(160);
+                    let totp = TOTP::new(
+                        totp_rs::Algorithm::SHA256,
+                        8,
+                        1,
+                        30,
+                        secret.clone(),
+                        Some("Nextflow Cloud Technologies".to_string()),
+                        user.username.clone(),
+                    )
+                    .expect("Unexpected error: failed to initiate TOTP");
+                    let qr = totp
+                        .get_qr()
+                        .expect("Unexpected error: failed to generate QR code");
+                    let continue_token = ulid::Ulid::new().to_string();
+                    let duration = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .expect("Unexpected error: time went backwards");
+                    let code = Secret::Raw(secret.to_vec()).to_encoded().to_string();
+                    let session = PendingMfaEnable {
+                        time: duration.as_secs(),
+                        user,
+                        secret: code.clone(),
+                        totp,
+                    };
+                    PENDING_MFA_ENABLES.insert(continue_token.clone(), session);
+                    Ok(web::Json(MfaResponse {
+                        continue_token: Some(continue_token),
+                        qr: Some(qr),
+                        secret: Some(code),
+                        success: None,
+                    }))
                 }
             } else {
-                Err(Error::DatabaseError)
+                Err(Error::MissingPassword)
             }
         } else {
             Err(Error::DatabaseError)
