@@ -2436,7 +2436,6 @@ dependencies = [
  "aes-gcm",
  "async-std",
  "bcrypt",
- "bytes",
  "dashmap",
  "env_logger",
  "futures-util",
