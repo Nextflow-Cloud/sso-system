@@ -1,5 +1,6 @@
 use actix_cors::Cors;
 use actix_web::{HttpServer, App, middleware::Logger, web};
+use log::info;
 
 use crate::{environment::{CORS_ORIGINS, HOST}, authenticate::JwtAuthentication};
 
@@ -12,7 +13,13 @@ pub mod errors;
 
 #[async_std::main]
 async fn main() {
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+
+    info!("Nextflow SSO system version {}", env!("CARGO_PKG_VERSION"));
+    info!("Connecting to MongoDB...");
     database::connect().await;
+    
+    info!("Starting server on {}...", *HOST);
     HttpServer::new(|| {
         App::new()
             .wrap(

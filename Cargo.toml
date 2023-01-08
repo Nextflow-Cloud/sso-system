@@ -33,3 +33,5 @@ ulid = "1.0.0"
 lettre = "0.10"
 
 totp-rs = { version = "4.0.0", features = ["qr"] }
+env_logger = "0.10.0"
+log = "0.4.17"
