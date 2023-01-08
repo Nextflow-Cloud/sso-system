@@ -30,9 +30,9 @@ pub struct DeleteResponse {
 }
 
 pub struct PendingDelete {
-    id: String,
-    mfa_secret: String,
-    time: u64,
+    pub id: String,
+    pub mfa_secret: String,
+    pub time: u64,
 }
 
 lazy_static! {
