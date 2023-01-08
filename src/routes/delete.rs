@@ -29,20 +29,6 @@ pub struct DeleteResponse {
     continue_token: Option<String>,
 }
 
-// pub fn route() -> impl Filter<Extract = (WithStatus<warp::reply::Json>,), Error = Rejection> + Clone
-// {
-//     warp::delete().and(
-//         warp::path("user")
-//             .and(
-//                 headers_cloned()
-//                     .map(move |headers: HeaderMap<HeaderValue>| headers)
-//                     .and_then(authenticate),
-//             )
-//             .and(warp::body::json())
-//             .and_then(handle),
-//     )
-// }
-
 pub struct PendingDelete {
     id: String,
     mfa_secret: String,

@@ -10,11 +10,6 @@ pub struct LogoutResponse {
     success: bool,
 }
 
-#[derive(Deserialize, Serialize)]
-pub struct LogoutError {
-    error: String,
-}
-
 pub async fn handle(jwt: web::ReqData<Result<Authenticate>>) -> Result<impl Responder> {
     let jwt = jwt.into_inner()?;
     let blacklist = get_collection();

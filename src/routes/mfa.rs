@@ -21,11 +21,6 @@ pub struct Mfa {
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct MfaError {
-    error: String,
-}
-
-#[derive(Deserialize, Serialize)]
 pub struct MfaResponse {
     continue_token: Option<String>,
     success: Option<bool>,

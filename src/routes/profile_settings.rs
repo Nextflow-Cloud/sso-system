@@ -20,16 +20,6 @@ pub struct ProfileSettingsResponse {
     success: bool,
 }
 
-// pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-//     warp::patch().and(
-//         warp::path!("user" / "profile")
-//             .and(headers_cloned().and_then(authenticate))
-//             .and(warp::header::value("Content-Type"))
-//             .and(warp::multipart::form().max_length(8_000_000))
-//             .and_then(handle),
-//     )
-// }
-
 pub async fn handle(
     jwt: web::ReqData<Result<Authenticate>>,
     profile_settings: web::Json<ProfileSettings>,

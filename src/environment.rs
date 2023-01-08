@@ -14,4 +14,5 @@ lazy_static! {
         .split(',')
         .map(|s| s.to_string())
         .collect();
+    pub static ref HOST: String = env::var("HOST").expect("HOST must be set");
 }

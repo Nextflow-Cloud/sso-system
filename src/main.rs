@@ -1,7 +1,7 @@
 use actix_cors::Cors;
 use actix_web::{HttpServer, App, middleware::Logger, web};
 
-use crate::{environment::CORS_ORIGINS, authenticate::JwtAuthentication};
+use crate::{environment::{CORS_ORIGINS, HOST}, authenticate::JwtAuthentication};
 
 pub mod authenticate;
 pub mod database;
@@ -37,20 +37,18 @@ async fn main() {
             .wrap(JwtAuthentication)
             .wrap(Logger::default())
             .route("/user", web::patch().to(routes::account_settings::handle))
+            .route("/user", web::get().to(routes::current_user::handle))
             .route("/user", web::delete().to(routes::delete::handle))
             .route("/ip", web::get().to(routes::ip::handle))
             .route("/session", web::post().to(routes::login::handle))
             .route("/session", web::delete().to(routes::logout::handle))
-            .route("/user", web::get().to(routes::current_user::handle))
-            .route("/user/{id}", web::get().to(routes::user::handle))
             .route("/user/mfa", web::patch().to(routes::mfa::handle))
+            .route("/user", web::post().to(routes::register::handle))
+            .route("/user/{id}", web::get().to(routes::user::handle))
             .route("/validate", web::post().to(routes::validate::handle))
-            // .route("/user/profile", routes::profile_settings::handle)
-            // .route("/user/{id}", routes::user::handle)
-            // .route("/user/{id}/register", routes::register::handle)
-
+            .route("/user/profile", web::patch().to(routes::profile_settings::handle))
     })
-    .bind("0.0.0.0:9000")
+    .bind(HOST.clone())
     .expect("Failed to start server")
     .run()
     .await

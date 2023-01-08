@@ -9,11 +9,6 @@ pub struct Validate {
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct ValidateError {
-    error: String,
-}
-
-#[derive(Deserialize, Serialize)]
 pub struct ValidateResponse {
     success: bool,
 }

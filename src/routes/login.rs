@@ -24,11 +24,6 @@ pub struct Login {
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct LoginError {
-    error: String,
-}
-
-#[derive(Deserialize, Serialize)]
 pub struct LoginResponse {
     mfa_enabled: Option<bool>,
     token: Option<String>,
@@ -51,7 +46,6 @@ lazy_static! {
     pub static ref PENDING_LOGINS: DashMap<String, PendingLogin> = DashMap::new();
     pub static ref PENDING_MFAS: DashMap<String, PendingMfa> = DashMap::new();
 }
-
 
 pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
     let login = login.into_inner();

@@ -24,11 +24,6 @@ pub struct Register {
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct RegisterError {
-    error: String,
-}
-
-#[derive(Deserialize, Serialize)]
 pub struct RegisterResponse {
     token: String,
 }
@@ -41,10 +36,6 @@ pub struct HCaptchaResponse {
     credit: Option<bool>,
     error_codes: Option<Vec<String>>,
 }
-
-// pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-//     warp::post().and(warp::path("user").and(warp::body::json()).and_then(handle))
-// }
 
 pub async fn handle(register: web::Json<Register>) -> Result<impl Responder> {
     let register = register.into_inner();

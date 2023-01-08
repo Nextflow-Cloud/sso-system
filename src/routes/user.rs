@@ -8,11 +8,6 @@ use crate::{
 };
 
 #[derive(Deserialize, Serialize)]
-pub struct UserError {
-    error: String,
-}
-
-#[derive(Deserialize, Serialize)]
 pub struct UserResponse {
     id: String,
     username: String,

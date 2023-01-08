@@ -8,7 +8,7 @@ use crate::{
 };
 
 #[derive(Deserialize, Serialize)]
-pub struct UserResponse {
+pub struct CurrentUserResponse {
     id: String,
     username: String,
     mfa_enabled: bool,
@@ -45,7 +45,7 @@ pub async fn handle(
         if let Some(result) = result {
             if let Ok(profile_result) = profile_result {
                 if let Some(profile_result) = profile_result {
-                    Ok(web::Json(UserResponse {
+                    Ok(web::Json(CurrentUserResponse {
                         avatar: profile_result.avatar,
                         description: profile_result.description,
                         display_name: profile_result.display_name,
