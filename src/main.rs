@@ -1,4 +1,5 @@
 use actix_cors::Cors;
+use actix_files::Files;
 use actix_web::{HttpServer, App, middleware::Logger, web};
 use log::info;
 
@@ -43,6 +44,7 @@ async fn main() {
             )
             .wrap(JwtAuthentication)
             .wrap(Logger::default())
+            .service(Files::new("/bundle", "bundle"))
             .route("/user", web::patch().to(routes::account_settings::handle))
             .route("/user", web::get().to(routes::current_user::handle))
             .route("/user", web::delete().to(routes::delete::handle))
