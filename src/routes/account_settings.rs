@@ -11,7 +11,7 @@ use totp_rs::{Algorithm, Secret, TOTP};
 use crate::{
     authenticate::Authenticate,
     database::user::{get_collection, User},
-    errors::{Result, Error},
+    errors::{Error, Result},
     utilities::USERNAME_RE,
 };
 
@@ -107,9 +107,8 @@ pub async fn handle(
                             }
                         }
                         if let Some(password) = account_settings.new_password {
-                            let new_password_hash =
-                                bcrypt::hash(password, bcrypt::DEFAULT_COST)
-                                    .expect("Unexpected error: failed to hash password");
+                            let new_password_hash = bcrypt::hash(password, bcrypt::DEFAULT_COST)
+                                .expect("Unexpected error: failed to hash password");
                             update_query.insert("password_hash", new_password_hash);
                         }
                         if let Some(public_email) = account_settings.public_email {

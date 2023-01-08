@@ -1,4 +1,4 @@
-use actix_web::{Responder, HttpRequest, web};
+use actix_web::{web, HttpRequest, Responder};
 use serde::{Deserialize, Serialize};
 
 use crate::errors::{Error, Result};
@@ -10,8 +10,8 @@ pub struct IpResponse {
 
 pub async fn handle(req: HttpRequest) -> Result<impl Responder> {
     let connection_info = req.connection_info();
-    let ip = connection_info.realip_remote_addr().ok_or(Error::IpMissing)?;
-    Ok(web::Json(IpResponse {
-        ip: ip.to_string(),
-    }))
+    let ip = connection_info
+        .realip_remote_addr()
+        .ok_or(Error::IpMissing)?;
+    Ok(web::Json(IpResponse { ip: ip.to_string() }))
 }

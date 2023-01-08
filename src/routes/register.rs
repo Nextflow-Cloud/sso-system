@@ -8,9 +8,11 @@ use reqwest;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    authenticate::UserJwt,
     database::{profile::UserProfile, user::User},
     environment::{HCAPTCHA_SECRET, JWT_SECRET},
-    utilities::{EMAIL_RE, USERNAME_RE}, errors::{Error, Result}, authenticate::UserJwt,
+    errors::{Error, Result},
+    utilities::{EMAIL_RE, USERNAME_RE},
 };
 
 #[derive(Deserialize, Serialize)]
@@ -102,7 +104,7 @@ pub async fn handle(register: web::Json<Register>) -> Result<impl Responder> {
                         let profile_result =
                             profile_collection.insert_one(profile_document, None).await;
                         if insert_result.is_err() || profile_result.is_err() {
-                            return Err(Error::DatabaseError)
+                            return Err(Error::DatabaseError);
                         } else {
                             let duration = SystemTime::now()
                                 .duration_since(UNIX_EPOCH)
@@ -125,9 +127,7 @@ pub async fn handle(register: web::Json<Register>) -> Result<impl Responder> {
                                 &EncodingKey::from_secret(JWT_SECRET.as_ref()),
                             )
                             .expect("Unexpected error: failed to encode token");
-                            Ok(web::Json(RegisterResponse {
-                                token,
-                            }))
+                            Ok(web::Json(RegisterResponse { token }))
                         }
                     } else {
                         Err(Error::UserExists)

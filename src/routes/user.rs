@@ -1,10 +1,12 @@
-use actix_web::{Responder, web};
+use actix_web::{web, Responder};
 use mongodb::bson::doc;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    authenticate::UserJwt,
     database::profile,
-    database::user, authenticate::UserJwt, errors::{Error, Result},
+    database::user,
+    errors::{Error, Result},
 };
 
 #[derive(Deserialize, Serialize)]

@@ -9,10 +9,12 @@ use serde::{Deserialize, Serialize};
 use totp_rs::{Secret, TOTP};
 
 use crate::{
+    authenticate::Authenticate,
     database::{
         blacklist::{self, Blacklist},
         user,
-    }, authenticate::Authenticate, errors::{Error, Result},
+    },
+    errors::{Error, Result},
 };
 
 #[derive(Deserialize, Serialize)]

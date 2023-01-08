@@ -1,4 +1,4 @@
-use actix_web::{Responder, web};
+use actix_web::{web, Responder};
 use serde::{Deserialize, Serialize};
 
 use crate::{authenticate::validate_token, errors::Result};

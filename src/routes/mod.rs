@@ -1,4 +1,5 @@
 pub mod account_settings;
+pub mod current_user;
 pub mod delete;
 pub mod ip;
 pub mod login;
@@ -8,4 +9,3 @@ pub mod profile_settings;
 pub mod register;
 pub mod user;
 pub mod validate;
-pub mod current_user;

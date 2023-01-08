@@ -3,7 +3,6 @@ use std::fmt::Display;
 use actix_web::ResponseError;
 use serde::{Deserialize, Serialize};
 
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "error", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Error {
@@ -28,7 +27,7 @@ pub enum Error {
     IncorrectEmail,
     IncorrectPassword,
     IncorrectCode,
-    
+
     MissingContinueToken,
     SessionExpired,
     InvalidStage,

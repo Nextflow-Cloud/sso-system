@@ -1,8 +1,10 @@
-use actix_web::{Responder, web};
+use actix_web::{web, Responder};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    database::blacklist::{get_collection, Blacklist}, authenticate::Authenticate, errors::{Error, Result},
+    authenticate::Authenticate,
+    database::blacklist::{get_collection, Blacklist},
+    errors::{Error, Result},
 };
 
 #[derive(Deserialize, Serialize)]

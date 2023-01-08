@@ -1,4 +1,4 @@
-use actix_web::{Responder, web};
+use actix_web::{web, Responder};
 use bcrypt::verify;
 use dashmap::DashMap;
 use jsonwebtoken::{encode, EncodingKey, Header};
@@ -9,8 +9,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use totp_rs::{Algorithm, Secret, TOTP};
 
 use crate::{
+    authenticate::UserJwt,
     database::user::User,
-    environment::JWT_SECRET, errors::{Error, Result}, authenticate::UserJwt,
+    environment::JWT_SECRET,
+    errors::{Error, Result},
 };
 
 #[derive(Deserialize, Serialize)]
@@ -223,8 +225,6 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                 Err(Error::MissingContinueToken)
             }
         }
-        _ => {
-            Err(Error::InvalidStage)
-        }
+        _ => Err(Error::InvalidStage),
     }
 }

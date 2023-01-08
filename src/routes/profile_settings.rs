@@ -1,10 +1,11 @@
-use actix_web::{Responder, web};
+use actix_web::{web, Responder};
 use mongodb::bson::doc;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     authenticate::Authenticate,
-    database::profile::get_collection, errors::{Error, Result},
+    database::profile::get_collection,
+    errors::{Error, Result},
 };
 
 #[derive(Deserialize, Serialize)]
@@ -38,19 +39,19 @@ pub async fn handle(
         let mut update_query = doc! {};
         if let Some(display_name) = profile_settings.display_name {
             if display_name.trim().len() > 64 {
-                return Err(Error::DisplayNameTooLong)
+                return Err(Error::DisplayNameTooLong);
             }
             update_query.insert("display_name", display_name.trim());
         }
         if let Some(description) = profile_settings.description {
             if description.trim().len() > 2048 {
-                return Err(Error::DescriptionTooLong)
+                return Err(Error::DescriptionTooLong);
             }
             update_query.insert("description", description.trim());
         }
         if let Some(website) = profile_settings.website {
             if website.trim().len() > 256 {
-                return Err(Error::WebsiteTooLong)
+                return Err(Error::WebsiteTooLong);
             }
             update_query.insert("website", website.trim());
         }

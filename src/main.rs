@@ -1,18 +1,21 @@
 use actix_cors::Cors;
 use actix_files::Files;
-use actix_web::{HttpServer, App, middleware::Logger, web};
+use actix_web::{middleware::Logger, web, App, HttpServer};
 use async_std::task;
 use log::info;
 
-use crate::{environment::{CORS_ORIGINS, HOST}, authenticate::JwtAuthentication};
+use crate::{
+    authenticate::JwtAuthentication,
+    environment::{CORS_ORIGINS, HOST},
+};
 
 pub mod authenticate;
+pub mod cleanup;
 pub mod database;
 pub mod environment;
+pub mod errors;
 pub mod routes;
 pub mod utilities;
-pub mod errors;
-pub mod cleanup;
 
 #[async_std::main]
 async fn main() {
@@ -65,7 +68,10 @@ async fn main() {
             .route("/user", web::post().to(routes::register::handle))
             .route("/user/{id}", web::get().to(routes::user::handle))
             .route("/validate", web::post().to(routes::validate::handle))
-            .route("/user/profile", web::patch().to(routes::profile_settings::handle))
+            .route(
+                "/user/profile",
+                web::patch().to(routes::profile_settings::handle),
+            )
     })
     .bind(HOST.clone())
     .expect("Failed to start server")

@@ -1,13 +1,21 @@
 use actix_web::HttpMessage;
-use jsonwebtoken::{decode, Validation, Algorithm, DecodingKey};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use mongodb::bson::doc;
-use serde::{Serialize, Deserialize};
-use std::{future::{ready, Ready}, collections::HashSet, time::{SystemTime, UNIX_EPOCH}, rc::Rc};
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::HashSet,
+    future::{ready, Ready},
+    rc::Rc,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use futures_util::future::LocalBoxFuture;
 
-use crate::{environment::JWT_SECRET, errors::{Error, Result}};
+use crate::{
+    environment::JWT_SECRET,
+    errors::{Error, Result},
+};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct UserJwt {
@@ -84,7 +92,10 @@ pub async fn validate_token(jwt: &String) -> Result<Authenticate> {
 }
 
 pub async fn get_token(req: &ServiceRequest) -> Result<Authenticate> {
-    let authorization = req.headers().get("Authorization").ok_or(Error::MissingToken)?;
+    let authorization = req
+        .headers()
+        .get("Authorization")
+        .ok_or(Error::MissingToken)?;
     let jwt = &authorization.to_str().map_err(|_| Error::InvalidToken)?[7..];
     validate_token(&jwt.to_string()).await
 }

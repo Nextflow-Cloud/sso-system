@@ -1,10 +1,12 @@
-use actix_web::{Responder, web};
+use actix_web::{web, Responder};
 use mongodb::bson::doc;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    authenticate::Authenticate,
     database::profile,
-    database::user, authenticate::Authenticate, errors::{Error, Result},
+    database::user,
+    errors::{Error, Result},
 };
 
 #[derive(Deserialize, Serialize)]
@@ -19,9 +21,7 @@ pub struct CurrentUserResponse {
     avatar: String,
 }
 
-pub async fn handle(
-    jwt: web::ReqData<Result<Authenticate>>,
-) -> Result<impl Responder> {
+pub async fn handle(jwt: web::ReqData<Result<Authenticate>>) -> Result<impl Responder> {
     let jwt = jwt.into_inner()?;
     let collection = user::get_collection();
     let profile_collection = profile::get_collection();
@@ -68,5 +68,3 @@ pub async fn handle(
         Err(Error::DatabaseError)
     }
 }
-
-

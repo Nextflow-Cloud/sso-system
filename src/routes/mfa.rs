@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use actix_web::{Responder, web};
+use actix_web::{web, Responder};
 use bcrypt::verify;
 use dashmap::DashMap;
 use lazy_static::lazy_static;
@@ -9,7 +9,10 @@ use serde::{Deserialize, Serialize};
 use totp_rs::{Secret, TOTP};
 
 use crate::{
-    database::user::{get_collection, User}, errors::{Error, Result}, authenticate::Authenticate, utilities::random_number,
+    authenticate::Authenticate,
+    database::user::{get_collection, User},
+    errors::{Error, Result},
+    utilities::random_number,
 };
 
 #[derive(Deserialize, Serialize)]
@@ -45,7 +48,10 @@ lazy_static! {
     pub static ref PENDING_MFA_DISABLES: DashMap<String, PendingMfaDisable> = DashMap::new();
 }
 
-pub async fn handle(jwt: web::ReqData<Result<Authenticate>>, mfa: web::Json<Mfa>) -> Result<impl Responder> {
+pub async fn handle(
+    jwt: web::ReqData<Result<Authenticate>>,
+    mfa: web::Json<Mfa>,
+) -> Result<impl Responder> {
     let jwt = jwt.into_inner()?;
     let mfa = mfa.into_inner();
     if mfa.stage == 1 {
