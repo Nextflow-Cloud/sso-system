@@ -4,13 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     database::profile,
-    database::user, authenticate::UserJwt, errors::{Error, Result},
+    database::user, authenticate::Authenticate, errors::{Error, Result},
 };
-
-#[derive(Deserialize, Serialize)]
-pub struct UserError {
-    error: String,
-}
 
 #[derive(Deserialize, Serialize)]
 pub struct UserResponse {
@@ -25,16 +20,15 @@ pub struct UserResponse {
 }
 
 pub async fn handle(
-    user_id: web::Path<String>,
-    jwt: web::ReqData<Result<UserJwt>>,
+    jwt: web::ReqData<Result<Authenticate>>,
 ) -> Result<impl Responder> {
-    jwt.into_inner()?;
+    let jwt = jwt.into_inner()?;
     let collection = user::get_collection();
     let profile_collection = profile::get_collection();
     let result = collection
         .find_one(
             doc! {
-                "id": user_id.clone()
+                "id": jwt.jwt_content.id.clone()
             },
             None,
         )
@@ -42,7 +36,7 @@ pub async fn handle(
     let profile_result = profile_collection
         .find_one(
             doc! {
-                "id": user_id.clone()
+                "id": jwt.jwt_content.id.clone()
             },
             None,
         )
@@ -55,7 +49,7 @@ pub async fn handle(
                         avatar: profile_result.avatar,
                         description: profile_result.description,
                         display_name: profile_result.display_name,
-                        id: user_id.to_string(),
+                        id: jwt.jwt_content.id,
                         mfa_enabled: result.mfa_enabled,
                         public_email: result.public_email,
                         username: result.username,
@@ -74,3 +68,5 @@ pub async fn handle(
         Err(Error::DatabaseError)
     }
 }
+
+

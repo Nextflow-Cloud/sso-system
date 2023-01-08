@@ -1,23 +1,17 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use actix_web::{web, Responder};
 use bcrypt::{hash, DEFAULT_COST};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use mongodb::bson::doc;
 use reqwest;
 use serde::{Deserialize, Serialize};
-use warp::{
-    hyper::StatusCode,
-    reply::{Json, WithHeader, WithStatus},
-    Filter, Rejection, Reply,
-};
 
 use crate::{
     database::{profile::UserProfile, user::User},
-    environment::{HCAPTCHA_SECRET, JWT_SECRET, ROOT_DOMAIN},
-    utilities::{generate_id, EMAIL_RE, USERNAME_RE},
+    environment::{HCAPTCHA_SECRET, JWT_SECRET},
+    utilities::{EMAIL_RE, USERNAME_RE}, errors::{Error, Result}, authenticate::UserJwt,
 };
-
-use super::login::UserJwt;
 
 #[derive(Deserialize, Serialize)]
 pub struct Register {
@@ -48,11 +42,12 @@ pub struct HCaptchaResponse {
     error_codes: Option<Vec<String>>,
 }
 
-pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    warp::post().and(warp::path("user").and(warp::body::json()).and_then(handle))
-}
+// pub fn route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+//     warp::post().and(warp::path("user").and(warp::body::json()).and_then(handle))
+// }
 
-pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, warp::Rejection> {
+pub async fn handle(register: web::Json<Register>) -> Result<impl Responder> {
+    let register = register.into_inner();
     let client = reqwest::Client::new();
     let result = client
         .post("https://hcaptcha.com/siteverify")
@@ -72,17 +67,7 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
                 .expect("Unexpected error: failed to convert response into JSON");
             if response.success {
                 if !EMAIL_RE.is_match(register.email.trim()) {
-                    let error = RegisterError {
-                        error: "Email is invalid".to_string(),
-                    };
-                    return Ok(warp::reply::with_header(
-                        warp::reply::with_status(
-                            warp::reply::json(&error),
-                            StatusCode::BAD_REQUEST,
-                        ),
-                        "",
-                        "",
-                    ));
+                    return Err(Error::InvalidEmail);
                 }
                 let password_hash = hash(register.password, DEFAULT_COST)
                     .expect("Unexpected error: failed to hash");
@@ -98,33 +83,12 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
                 if let Ok(user) = user {
                     if user.is_none() {
                         if register.display_name.trim().len() > 64 {
-                            let error = RegisterError {
-                                error: "Display name too long".to_string(),
-                            };
-                            return Ok(warp::reply::with_header(
-                                warp::reply::with_status(
-                                    warp::reply::json(&error),
-                                    StatusCode::BAD_REQUEST,
-                                ),
-                                "",
-                                "",
-                            ));
+                            return Err(Error::DisplayNameTooLong);
                         }
                         if !USERNAME_RE.is_match(register.username.trim()) {
-                            let error = RegisterError {
-                                error: "Username is too long or contains invalid characters"
-                                    .to_string(),
-                            };
-                            return Ok(warp::reply::with_header(
-                                warp::reply::with_status(
-                                    warp::reply::json(&error),
-                                    StatusCode::BAD_REQUEST,
-                                ),
-                                "",
-                                "",
-                            ));
+                            return Err(Error::InvalidUsername);
                         }
-                        let user_id = generate_id();
+                        let user_id = ulid::Ulid::new().to_string();
                         let user_document = User {
                             id: user_id.clone(),
                             mfa_enabled: false,
@@ -147,17 +111,7 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
                         let profile_result =
                             profile_collection.insert_one(profile_document, None).await;
                         if insert_result.is_err() || profile_result.is_err() {
-                            let error = RegisterError {
-                                error: "Failed to insert into database".to_string(),
-                            };
-                            Ok(warp::reply::with_header(
-                                warp::reply::with_status(
-                                    warp::reply::json(&error),
-                                    StatusCode::INTERNAL_SERVER_ERROR,
-                                ),
-                                "",
-                                "",
-                            ))
+                            return Err(Error::DatabaseError)
                         } else {
                             let duration = SystemTime::now()
                                 .duration_since(UNIX_EPOCH)
@@ -180,79 +134,23 @@ pub async fn handle(register: Register) -> Result<WithHeader<WithStatus<Json>>, 
                                 &EncodingKey::from_secret(JWT_SECRET.as_ref()),
                             )
                             .expect("Unexpected error: failed to encode token");
-                            let response = RegisterResponse {
-                                token: token.clone(),
-                            };
-                            Ok(warp::reply::with_header(
-                                warp::reply::with_status(
-                                    warp::reply::json(&response),
-                                    StatusCode::OK,
-                                ),
-                                "Set-Cookie",
-                                format!(
-                                    "token={}; Max-Age=2147483647; Domain={}; Path=/; Secure",
-                                    token,
-                                    ROOT_DOMAIN.as_str()
-                                ),
-                            ))
+                            Ok(web::Json(RegisterResponse {
+                                token,
+                            }))
                         }
                     } else {
-                        let error = RegisterError {
-                            error: "User already exists".to_string(),
-                        };
-                        Ok(warp::reply::with_header(
-                            warp::reply::with_status(
-                                warp::reply::json(&error),
-                                StatusCode::CONFLICT,
-                            ),
-                            "",
-                            "",
-                        ))
+                        Err(Error::UserExists)
                     }
                 } else {
-                    let error = RegisterError {
-                        error: "Failed to query database".to_string(),
-                    };
-                    Ok(warp::reply::with_header(
-                        warp::reply::with_status(
-                            warp::reply::json(&error),
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                        ),
-                        "",
-                        "",
-                    ))
+                    Err(Error::DatabaseError)
                 }
             } else {
-                let error = RegisterError {
-                    error: "Invalid hCaptcha token".to_string(),
-                };
-                Ok(warp::reply::with_header(
-                    warp::reply::with_status(warp::reply::json(&error), StatusCode::BAD_REQUEST),
-                    "",
-                    "",
-                ))
+                Err(Error::InvalidCaptcha)
             }
         } else {
-            let error = RegisterError {
-                error: "Failed to fetch hCaptcha response".to_string(),
-            };
-            Ok(warp::reply::with_header(
-                warp::reply::with_status(
-                    warp::reply::json(&error),
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                ),
-                "",
-                "",
-            ))
+            Err(Error::InternalCaptchaError)
         }
     } else {
-        let error = RegisterError {
-            error: "Failed to fetch hCaptcha response".to_string(),
-        };
-        Ok(warp::reply::with_header(
-            warp::reply::with_status(warp::reply::json(&error), StatusCode::INTERNAL_SERVER_ERROR),
-            "",
-            "",
-        ))
+        Err(Error::InternalCaptchaError)
     }
 }

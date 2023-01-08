@@ -1,28 +1,18 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use actix_web::{web, Responder};
 use bcrypt::verify;
 use dashmap::DashMap;
 use lazy_static::lazy_static;
 use mongodb::bson::doc;
-use reqwest::{
-    header::{HeaderMap, HeaderValue},
-    StatusCode,
-};
 use serde::{Deserialize, Serialize};
 use totp_rs::{Secret, TOTP};
-use warp::{
-    header::headers_cloned,
-    reply::{Json, WithStatus},
-    Filter, Rejection,
-};
 
 use crate::{
-    authenticate::{authenticate, Authenticate},
     database::{
         blacklist::{self, Blacklist},
         user,
-    },
-    utilities::generate_id,
+    }, authenticate::Authenticate, errors::{Error, Result},
 };
 
 #[derive(Deserialize, Serialize)]
@@ -34,29 +24,24 @@ pub struct Delete {
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct DeleteError {
-    error: String,
-}
-
-#[derive(Deserialize, Serialize)]
 pub struct DeleteResponse {
     success: Option<bool>,
     continue_token: Option<String>,
 }
 
-pub fn route() -> impl Filter<Extract = (WithStatus<warp::reply::Json>,), Error = Rejection> + Clone
-{
-    warp::delete().and(
-        warp::path("user")
-            .and(
-                headers_cloned()
-                    .map(move |headers: HeaderMap<HeaderValue>| headers)
-                    .and_then(authenticate),
-            )
-            .and(warp::body::json())
-            .and_then(handle),
-    )
-}
+// pub fn route() -> impl Filter<Extract = (WithStatus<warp::reply::Json>,), Error = Rejection> + Clone
+// {
+//     warp::delete().and(
+//         warp::path("user")
+//             .and(
+//                 headers_cloned()
+//                     .map(move |headers: HeaderMap<HeaderValue>| headers)
+//                     .and_then(authenticate),
+//             )
+//             .and(warp::body::json())
+//             .and_then(handle),
+//     )
+// }
 
 pub struct PendingDelete {
     id: String,
@@ -69,253 +54,149 @@ lazy_static! {
 }
 
 pub async fn handle(
-    jwt: Option<Authenticate>,
-    delete_user: Delete,
-) -> Result<WithStatus<Json>, Rejection> {
-    if let Some(jwt) = jwt {
-        if delete_user.stage == 1 {
-            if let Some(password) = delete_user.password {
-                let collection = user::get_collection();
-                let user = collection
-                    .find_one(
-                        doc! {
-                            "id": jwt.jwt_content.id.clone()
-                        },
-                        None,
-                    )
-                    .await;
-                if let Ok(user) = user {
-                    if let Some(user) = user {
-                        let verified = verify(password, &user.password_hash)
-                            .expect("Unexpected error: failed to verify password");
-                        if verified {
-                            if user.mfa_enabled {
-                                let continue_token = generate_id();
-                                let duration = SystemTime::now()
-                                    .duration_since(UNIX_EPOCH)
-                                    .expect("Unexpected error: time went backwards");
-                                let delete_session = PendingDelete {
-                                    id: jwt.jwt_content.id,
-                                    mfa_secret: user.mfa_secret.unwrap(),
-                                    time: duration.as_secs(),
-                                };
-                                PENDING_DELETES.insert(continue_token.clone(), delete_session);
-                                let response = DeleteResponse {
-                                    continue_token: Some(continue_token),
-                                    success: None,
-                                };
-                                Ok(warp::reply::with_status(
-                                    warp::reply::json(&response),
-                                    StatusCode::OK,
-                                ))
-                            } else {
-                                let blacklist = blacklist::get_collection();
-                                let blacklist_result = blacklist
-                                    .insert_one(Blacklist { token: jwt.jwt }, None)
-                                    .await;
-                                if blacklist_result.is_ok() {
-                                    let result = collection
-                                        .delete_one(
-                                            doc! {
-                                                "id": jwt.jwt_content.id
-                                            },
-                                            None,
-                                        )
-                                        .await;
-                                    if result.is_ok() {
-                                        let response = DeleteResponse {
-                                            success: Some(true),
-                                            continue_token: None,
-                                        };
-                                        Ok(warp::reply::with_status(
-                                            warp::reply::json(&response),
-                                            StatusCode::OK,
-                                        ))
-                                    } else {
-                                        let error = DeleteError {
-                                            error: "Unable to delete user".to_string(),
-                                        };
-                                        Ok(warp::reply::with_status(
-                                            warp::reply::json(&error),
-                                            StatusCode::INTERNAL_SERVER_ERROR,
-                                        ))
-                                    }
-                                } else {
-                                    let error = DeleteError {
-                                        error: "Unable to delete user".to_string(),
-                                    };
-                                    Ok(warp::reply::with_status(
-                                        warp::reply::json(&error),
-                                        StatusCode::INTERNAL_SERVER_ERROR,
-                                    ))
-                                }
-                            }
-                        } else {
-                            let error = DeleteError {
-                                error: "Password incorrect".to_string(),
+    jwt: web::ReqData<Result<Authenticate>>,
+    delete_user: web::Json<Delete>,
+) -> Result<impl Responder> {
+    let jwt = jwt.into_inner()?;
+    let delete_user = delete_user.into_inner();
+    if delete_user.stage == 1 {
+        if let Some(password) = delete_user.password {
+            let collection = user::get_collection();
+            let user = collection
+                .find_one(
+                    doc! {
+                        "id": jwt.jwt_content.id.clone()
+                    },
+                    None,
+                )
+                .await;
+            if let Ok(user) = user {
+                if let Some(user) = user {
+                    let verified = verify(password, &user.password_hash)
+                        .expect("Unexpected error: failed to verify password");
+                    if verified {
+                        if user.mfa_enabled {
+                            let continue_token = ulid::Ulid::new().to_string();
+                            let duration = SystemTime::now()
+                                .duration_since(UNIX_EPOCH)
+                                .expect("Unexpected error: time went backwards");
+                            let delete_session = PendingDelete {
+                                id: jwt.jwt_content.id,
+                                mfa_secret: user.mfa_secret.unwrap(),
+                                time: duration.as_secs(),
                             };
-                            Ok(warp::reply::with_status(
-                                warp::reply::json(&error),
-                                StatusCode::UNAUTHORIZED,
-                            ))
-                        }
-                    } else {
-                        let error = DeleteError {
-                            error: "User does not exist".to_string(),
-                        };
-                        Ok(warp::reply::with_status(
-                            warp::reply::json(&error),
-                            StatusCode::NOT_FOUND,
-                        ))
-                    }
-                } else {
-                    let error = DeleteError {
-                        error: "Database error".to_string(),
-                    };
-                    Ok(warp::reply::with_status(
-                        warp::reply::json(&error),
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                    ))
-                }
-            } else {
-                let error = DeleteError {
-                    error: "No password provided".to_string(),
-                };
-                Ok(warp::reply::with_status(
-                    warp::reply::json(&error),
-                    StatusCode::BAD_REQUEST,
-                ))
-            }
-        } else if delete_user.stage == 2 {
-            if let Some(ct) = delete_user.continue_token {
-                if let Some(c) = delete_user.code {
-                    let pending_delete = PENDING_DELETES.get(&ct);
-                    if let Some(pending_delete) = pending_delete {
-                        let duration = SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .expect("Unexpected error: time went backwards");
-                        if duration.as_secs() - pending_delete.time > 3600 {
-                            drop(pending_delete);
-                            PENDING_DELETES.remove(&ct);
-                            let error = DeleteError {
-                                error: "Session expired".to_string(),
-                            };
-                            Ok(warp::reply::with_status(
-                                warp::reply::json(&error),
-                                StatusCode::UNAUTHORIZED,
-                            ))
+                            PENDING_DELETES.insert(continue_token.clone(), delete_session);
+                            Ok(web::Json(DeleteResponse {
+                                continue_token: Some(continue_token),
+                                success: None,
+                            }))
                         } else {
-                            let secret = Secret::Encoded(pending_delete.mfa_secret.clone());
-                            let totp = TOTP::new(
-                                totp_rs::Algorithm::SHA256,
-                                8,
-                                1,
-                                30,
-                                secret.to_bytes().unwrap(),
-                                Some("Nextflow Cloud Technologies".to_string()),
-                                pending_delete.id.clone(),
-                            )
-                            .expect("Unexpected error: could not create TOTP instance");
-                            let current_code = totp
-                                .generate_current()
-                                .expect("Unexpected error: failed to generate code");
-                            if current_code != c {
-                                let error = DeleteError {
-                                    error: "Invalid code".to_string(),
-                                };
-                                Ok(warp::reply::with_status(
-                                    warp::reply::json(&error),
-                                    StatusCode::UNAUTHORIZED,
-                                ))
-                            } else {
-                                let blacklist = blacklist::get_collection();
-                                let blacklist_result = blacklist
-                                    .insert_one(Blacklist { token: jwt.jwt }, None)
+                            let blacklist = blacklist::get_collection();
+                            let blacklist_result = blacklist
+                                .insert_one(Blacklist { token: jwt.jwt }, None)
+                                .await;
+                            if blacklist_result.is_ok() {
+                                let result = collection
+                                    .delete_one(
+                                        doc! {
+                                            "id": jwt.jwt_content.id
+                                        },
+                                        None,
+                                    )
                                     .await;
-                                if blacklist_result.is_ok() {
-                                    let collection = user::get_collection();
-                                    let result = collection
-                                        .delete_one(
-                                            doc! {
-                                                "id": jwt.jwt_content.id
-                                            },
-                                            None,
-                                        )
-                                        .await;
-                                    if result.is_ok() {
-                                        drop(pending_delete);
-                                        PENDING_DELETES.remove(&ct);
-                                        let response = DeleteResponse {
-                                            success: Some(true),
-                                            continue_token: None,
-                                        };
-                                        Ok(warp::reply::with_status(
-                                            warp::reply::json(&response),
-                                            StatusCode::OK,
-                                        ))
-                                    } else {
-                                        let error = DeleteError {
-                                            error: "Unable to delete user".to_string(),
-                                        };
-                                        Ok(warp::reply::with_status(
-                                            warp::reply::json(&error),
-                                            StatusCode::INTERNAL_SERVER_ERROR,
-                                        ))
-                                    }
+                                if result.is_ok() {
+                                    Ok(web::Json(DeleteResponse {
+                                        success: Some(true),
+                                        continue_token: None,
+                                    }))
                                 } else {
-                                    let error = DeleteError {
-                                        error: "Unable to delete user".to_string(),
-                                    };
-                                    Ok(warp::reply::with_status(
-                                        warp::reply::json(&error),
-                                        StatusCode::INTERNAL_SERVER_ERROR,
-                                    ))
+                                    Err(Error::DatabaseError)
                                 }
+                            } else {
+                                Err(Error::DatabaseError)
                             }
                         }
                     } else {
-                        let error = DeleteError {
-                            error: "Session does not exist".to_string(),
-                        };
-                        Ok(warp::reply::with_status(
-                            warp::reply::json(&error),
-                            StatusCode::BAD_REQUEST,
-                        ))
+                        Err(Error::InvalidPassword)
                     }
                 } else {
-                    let error = DeleteError {
-                        error: "No MFA code".to_string(),
-                    };
-                    Ok(warp::reply::with_status(
-                        warp::reply::json(&error),
-                        StatusCode::BAD_REQUEST,
-                    ))
+                    Err(Error::UserNotFound)
                 }
             } else {
-                let error = DeleteError {
-                    error: "No continue token".to_string(),
-                };
-                Ok(warp::reply::with_status(
-                    warp::reply::json(&error),
-                    StatusCode::BAD_REQUEST,
-                ))
+                Err(Error::DatabaseError)
             }
         } else {
-            let error = DeleteError {
-                error: "Invalid stage".to_string(),
-            };
-            Ok(warp::reply::with_status(
-                warp::reply::json(&error),
-                StatusCode::BAD_REQUEST,
-            ))
+            Err(Error::MissingPassword)
+        }
+    } else if delete_user.stage == 2 {
+        if let Some(ct) = delete_user.continue_token {
+            if let Some(c) = delete_user.code {
+                let pending_delete = PENDING_DELETES.get(&ct);
+                if let Some(pending_delete) = pending_delete {
+                    let duration = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .expect("Unexpected error: time went backwards");
+                    if duration.as_secs() - pending_delete.time > 3600 {
+                        drop(pending_delete);
+                        PENDING_DELETES.remove(&ct);
+                        Err(Error::SessionExpired)
+                    } else {
+                        let secret = Secret::Encoded(pending_delete.mfa_secret.clone());
+                        let totp = TOTP::new(
+                            totp_rs::Algorithm::SHA256,
+                            8,
+                            1,
+                            30,
+                            secret.to_bytes().unwrap(),
+                            Some("Nextflow Cloud Technologies".to_string()),
+                            pending_delete.id.clone(),
+                        )
+                        .expect("Unexpected error: could not create TOTP instance");
+                        let current_code = totp
+                            .generate_current()
+                            .expect("Unexpected error: failed to generate code");
+                        if current_code != c {
+                            Err(Error::InvalidCode)
+                        } else {
+                            let blacklist = blacklist::get_collection();
+                            let blacklist_result = blacklist
+                                .insert_one(Blacklist { token: jwt.jwt }, None)
+                                .await;
+                            if blacklist_result.is_ok() {
+                                let collection = user::get_collection();
+                                let result = collection
+                                    .delete_one(
+                                        doc! {
+                                            "id": jwt.jwt_content.id
+                                        },
+                                        None,
+                                    )
+                                    .await;
+                                if result.is_ok() {
+                                    drop(pending_delete);
+                                    PENDING_DELETES.remove(&ct);
+                                    Ok(web::Json(DeleteResponse {
+                                        success: Some(true),
+                                        continue_token: None,
+                                    }))
+                                } else {
+                                    Err(Error::DatabaseError)
+                                }
+                            } else {
+                                Err(Error::DatabaseError)
+                            }
+                        }
+                    }
+                } else {
+                    Err(Error::SessionExpired)
+                }
+            } else {
+                Err(Error::MissingCode)
+            }
+        } else {
+            Err(Error::MissingContinueToken)
         }
     } else {
-        let error = DeleteError {
-            error: "Invalid authorization".to_string(),
-        };
-        Ok(warp::reply::with_status(
-            warp::reply::json(&error),
-            StatusCode::UNAUTHORIZED,
-        ))
+        Err(Error::InvalidStage)
     }
 }

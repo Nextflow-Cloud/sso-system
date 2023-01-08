@@ -1,80 +1,119 @@
-use std::{
-    collections::HashSet,
-    time::{SystemTime, UNIX_EPOCH},
-};
-
-use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+use actix_web::HttpMessage;
+use jsonwebtoken::{decode, Validation, Algorithm, DecodingKey};
 use mongodb::bson::doc;
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
-use warp::Rejection;
+use serde::{Serialize, Deserialize};
+use std::{future::{ready, Ready}, collections::HashSet, time::{SystemTime, UNIX_EPOCH}, rc::Rc};
 
-use crate::{environment::JWT_SECRET, routes::login::UserJwt};
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
+use futures_util::future::LocalBoxFuture;
 
+use crate::{environment::JWT_SECRET, errors::{Error, Result}};
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct UserJwt {
+    pub(crate) id: String,
+    pub(crate) issued_at: u128,
+    pub(crate) expires_at: u128,
+}
+
+#[derive(Clone, Debug)]
 pub struct Authenticate {
-    pub(crate) jwt: String,
-    pub(crate) jwt_content: UserJwt,
+    pub jwt: String,
+    pub jwt_content: UserJwt,
 }
 
-fn jwt_from_header(headers: &HeaderMap<HeaderValue>) -> Option<&str> {
-    let header = match headers.get(AUTHORIZATION) {
-        Some(v) => v,
-        None => return None,
-    };
-    let auth_header = match std::str::from_utf8(header.as_bytes()) {
-        Ok(v) => v,
-        Err(_) => return None,
-    };
-    let bearer = "Bearer ";
-    if !auth_header.starts_with(bearer) {
-        return None;
+pub struct JwtAuthentication;
+impl<S, B> Transform<S, ServiceRequest> for JwtAuthentication
+where
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error> + 'static,
+    S::Future: 'static,
+    B: 'static,
+{
+    type Response = ServiceResponse<B>;
+    type Error = actix_web::Error;
+    type InitError = ();
+    type Transform = JwtMiddleware<S>;
+    type Future = Ready<std::result::Result<Self::Transform, Self::InitError>>;
+
+    fn new_transform(&self, service: S) -> Self::Future {
+        ready(Ok(JwtMiddleware {
+            service: service.into(),
+        }))
     }
-    Some(auth_header.trim_start_matches(bearer))
 }
 
-pub async fn authenticate(
-    headers: HeaderMap<HeaderValue>,
-) -> Result<Option<Authenticate>, Rejection> {
-    let jwt = jwt_from_header(&headers);
-    if let Some(j) = jwt {
-        let mut validation = Validation::new(Algorithm::HS256);
-        validation.required_spec_claims = HashSet::new();
-        validation.validate_exp = false;
-        let decoded = decode::<UserJwt>(
-            j,
-            &DecodingKey::from_secret(JWT_SECRET.as_ref()),
-            &validation,
-        );
-        if let Ok(d) = decoded {
-            let duration = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Unexpected error: time went backwards");
-            let millis = duration.as_millis();
-            if millis > d.claims.expires_at {
-                return Ok(None);
-            }
-            let collection = crate::database::blacklist::get_collection();
-            let query = collection
-                .find_one(
-                    doc! {
-                        "token": j
-                    },
-                    None,
-                )
-                .await;
-            if let Ok(q) = query {
-                if q.is_some() {
-                    return Ok(None);
-                }
-            }
-            let value = Authenticate {
-                jwt: j.to_string(),
-                jwt_content: d.claims,
-            };
-            Ok(Some(value))
-        } else {
-            Ok(None)
+pub struct JwtMiddleware<S> {
+    service: Rc<S>,
+}
+
+pub async fn validate_token(jwt: &String) -> Result<Authenticate> {
+    let mut validation = Validation::new(Algorithm::HS256);
+    validation.required_spec_claims = HashSet::new();
+    validation.validate_exp = false;
+    let token_data = decode::<UserJwt>(
+        jwt,
+        &DecodingKey::from_secret(JWT_SECRET.as_ref()),
+        &validation,
+    )?;
+
+    let duration = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Unexpected error: time went backwards");
+    let millis = duration.as_millis();
+    if millis > token_data.claims.expires_at {
+        return Err(Error::InvalidToken);
+    }
+    let collection = crate::database::blacklist::get_collection();
+    let query = collection
+        .find_one(
+            doc! {
+                "token": jwt
+            },
+            None,
+        )
+        .await;
+    if let Ok(q) = query {
+        if q.is_some() {
+            return Err(Error::InvalidToken);
         }
-    } else {
-        Ok(None)
+    }
+    Ok(Authenticate {
+        jwt: jwt.to_string(),
+        jwt_content: token_data.claims,
+    })
+}
+
+pub async fn get_token(req: &ServiceRequest) -> Result<Authenticate> {
+    let authorization = req.headers().get("Authorization").ok_or(Error::MissingToken)?;
+    let jwt = &authorization.to_str().map_err(|_| Error::InvalidToken)?[7..];
+    validate_token(&jwt.to_string()).await
+}
+
+impl<S, B> Service<ServiceRequest> for JwtMiddleware<S>
+where
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error> + 'static,
+    S::Future: 'static,
+    B: 'static,
+{
+    type Response = ServiceResponse<B>;
+    type Error = actix_web::Error;
+    type Future = LocalBoxFuture<'static, std::result::Result<Self::Response, Self::Error>>;
+
+    fn poll_ready(
+        &self,
+        cx: &mut ::core::task::Context<'_>,
+    ) -> ::core::task::Poll<std::result::Result<(), Self::Error>> {
+        self.service
+            .poll_ready(cx)
+            .map_err(::core::convert::Into::into)
+    }
+
+    fn call(self: &JwtMiddleware<S>, req: ServiceRequest) -> Self::Future {
+        let svc = self.service.clone();
+        Box::pin(async move {
+            let token = get_token(&req).await;
+            req.extensions_mut().insert(token);
+            Ok(svc.call(req).await?)
+        })
     }
 }
