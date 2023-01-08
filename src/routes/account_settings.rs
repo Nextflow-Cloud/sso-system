@@ -132,14 +132,13 @@ pub async fn handle(
                             continue_token: None,
                         }))
                     } else {
-                        Err(Error::InvalidPassword)
+                        Err(Error::IncorrectPassword)
                     }
                 } else {
                     Err(Error::MissingPassword)
                 }
             } else {
-                // TODO: This should never happen, invalidate the JWT on account deletion
-                Err(Error::UserNotFound)
+                Err(Error::DatabaseError)
             }
         } else {
             Err(Error::DatabaseError)
@@ -170,7 +169,7 @@ pub async fn handle(
                         .generate_current()
                         .expect("Unexpected error: failed to generate code");
                     if current_code != code {
-                        return Err(Error::InvalidCode);
+                        return Err(Error::IncorrectCode);
                     }
                     let mut update_query = doc! {};
                     if let Some(username) = pending_mfa.previous_request.username.clone() {

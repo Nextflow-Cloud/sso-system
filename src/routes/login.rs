@@ -79,7 +79,7 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                             token: None,
                         }))
                     } else {
-                        Err(Error::UserNotFound)
+                        Err(Error::IncorrectEmail)
                     }
                 } else {
                     Err(Error::DatabaseError)
@@ -146,7 +146,7 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                                 }))
                             }
                         } else {
-                            Err(Error::InvalidPassword)
+                            Err(Error::IncorrectPassword)
                         }
                     } else {
                         Err(Error::MissingPassword)
@@ -185,7 +185,7 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                             .generate_current()
                             .expect("Unexpected error: failed to generate code");
                         if current_code != code {
-                            Err(Error::InvalidCode)
+                            Err(Error::IncorrectCode)
                         } else {
                             let persist = login.persist.unwrap_or(false);
                             let millis = duration.as_millis();

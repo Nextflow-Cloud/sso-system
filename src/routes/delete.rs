@@ -103,10 +103,10 @@ pub async fn handle(
                             }
                         }
                     } else {
-                        Err(Error::InvalidPassword)
+                        Err(Error::IncorrectPassword)
                     }
                 } else {
-                    Err(Error::UserNotFound)
+                    Err(Error::DatabaseError)
                 }
             } else {
                 Err(Error::DatabaseError)
@@ -142,7 +142,7 @@ pub async fn handle(
                             .generate_current()
                             .expect("Unexpected error: failed to generate code");
                         if current_code != c {
-                            Err(Error::InvalidCode)
+                            Err(Error::IncorrectCode)
                         } else {
                             let blacklist = blacklist::get_collection();
                             let blacklist_result = blacklist

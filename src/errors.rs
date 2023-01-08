@@ -20,12 +20,14 @@ pub enum Error {
     MissingEmail,
     InvalidEmail,
     MissingPassword,
-    InvalidPassword,
     MissingCode,
-    InvalidCode,
     DisplayNameTooLong,
     DescriptionTooLong,
     WebsiteTooLong,
+
+    IncorrectEmail,
+    IncorrectPassword,
+    IncorrectCode,
     
     MissingContinueToken,
     SessionExpired,
@@ -58,16 +60,17 @@ impl ResponseError for Error {
             Error::UserNotFound => actix_web::http::StatusCode::NOT_FOUND,
             Error::UserExists => actix_web::http::StatusCode::CONFLICT,
 
-            // TODO: Change to 400
             Error::MissingEmail => actix_web::http::StatusCode::BAD_REQUEST,
-            Error::InvalidEmail => actix_web::http::StatusCode::UNAUTHORIZED,
+            Error::InvalidEmail => actix_web::http::StatusCode::BAD_REQUEST,
             Error::MissingPassword => actix_web::http::StatusCode::BAD_REQUEST,
-            Error::InvalidPassword => actix_web::http::StatusCode::UNAUTHORIZED,
             Error::MissingCode => actix_web::http::StatusCode::BAD_REQUEST,
-            Error::InvalidCode => actix_web::http::StatusCode::UNAUTHORIZED,
             Error::DisplayNameTooLong => actix_web::http::StatusCode::BAD_REQUEST,
             Error::DescriptionTooLong => actix_web::http::StatusCode::BAD_REQUEST,
             Error::WebsiteTooLong => actix_web::http::StatusCode::BAD_REQUEST,
+
+            Error::IncorrectEmail => actix_web::http::StatusCode::UNAUTHORIZED,
+            Error::IncorrectPassword => actix_web::http::StatusCode::UNAUTHORIZED,
+            Error::IncorrectCode => actix_web::http::StatusCode::UNAUTHORIZED,
 
             Error::MissingContinueToken => actix_web::http::StatusCode::BAD_REQUEST,
             Error::SessionExpired => actix_web::http::StatusCode::UNAUTHORIZED,

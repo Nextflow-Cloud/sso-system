@@ -56,13 +56,13 @@ pub async fn handle(
                         website: profile_result.website,
                     }))
                 } else {
-                    Err(Error::UserNotFound)
+                    Err(Error::DatabaseError)
                 }
             } else {
                 Err(Error::DatabaseError)
             }
         } else {
-            Err(Error::UserNotFound)
+            Err(Error::DatabaseError)
         }
     } else {
         Err(Error::DatabaseError)

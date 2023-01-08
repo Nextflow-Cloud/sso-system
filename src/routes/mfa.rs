@@ -59,7 +59,7 @@ pub async fn handle(jwt: web::ReqData<Result<Authenticate>>, mfa: web::Json<Mfa>
                     let verified = verify(password, &user.password_hash)
                         .expect("Unexpected error: failed to verify password");
                     if !verified {
-                        return Err(Error::InvalidPassword);
+                        return Err(Error::IncorrectPassword);
                     }
                     if user.mfa_enabled {
                         let continue_token = ulid::Ulid::new().to_string();
@@ -115,7 +115,7 @@ pub async fn handle(jwt: web::ReqData<Result<Authenticate>>, mfa: web::Json<Mfa>
                     Err(Error::MissingPassword)
                 }
             } else {
-                Err(Error::UserNotFound)
+                Err(Error::DatabaseError)
             }
         } else {
             Err(Error::DatabaseError)
@@ -166,7 +166,7 @@ pub async fn handle(jwt: web::ReqData<Result<Authenticate>>, mfa: web::Json<Mfa>
                             Err(Error::DatabaseError)
                         }
                     } else {
-                        Err(Error::InvalidCode)
+                        Err(Error::IncorrectCode)
                     }
                 } else {
                     let disable_session = PENDING_MFA_DISABLES.get(&continue_token);
@@ -224,7 +224,7 @@ pub async fn handle(jwt: web::ReqData<Result<Authenticate>>, mfa: web::Json<Mfa>
                                 Err(Error::DatabaseError)
                             }
                         } else {
-                            Err(Error::InvalidCode)
+                            Err(Error::IncorrectCode)
                         }
                     } else {
                         Err(Error::SessionExpired)

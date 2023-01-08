@@ -33,7 +33,7 @@ pub async fn handle(
         .await;
     if let Ok(profile) = existing_profile {
         if profile.is_none() {
-            return Err(Error::UserNotFound);
+            return Err(Error::DatabaseError);
         }
         let mut update_query = doc! {};
         if let Some(display_name) = profile_settings.display_name {
@@ -67,6 +67,6 @@ pub async fn handle(
             Err(Error::DatabaseError)
         }
     } else {
-        Err(Error::UserNotFound)
+        Err(Error::DatabaseError)
     }
 }
