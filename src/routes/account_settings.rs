@@ -35,9 +35,9 @@ pub struct AccountSettingsResponse {
 }
 
 pub struct PendingMfa {
-    time: u64,
-    previous_request: AccountSettings,
-    user: User,
+    pub time: u64,
+    pub previous_request: AccountSettings,
+    pub user: User,
 }
 
 lazy_static! {

@@ -31,15 +31,15 @@ pub struct LoginResponse {
 }
 
 pub struct PendingLogin {
-    email: String,
-    time: u64,
-    user: User,
+    pub email: String,
+    pub time: u64,
+    pub user: User,
 }
 
 pub struct PendingMfa {
-    time: u64,
-    user: User,
-    email: String,
+    pub time: u64,
+    pub user: User,
+    pub email: String,
 }
 
 lazy_static! {

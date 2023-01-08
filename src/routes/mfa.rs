@@ -29,15 +29,15 @@ pub struct MfaResponse {
 }
 
 pub struct PendingMfaEnable {
-    totp: TOTP,
-    secret: String,
-    time: u64,
-    user: User,
+    pub totp: TOTP,
+    pub secret: String,
+    pub time: u64,
+    pub user: User,
 }
 
 pub struct PendingMfaDisable {
-    user: User,
-    time: u64,
+    pub user: User,
+    pub time: u64,
 }
 
 lazy_static! {
