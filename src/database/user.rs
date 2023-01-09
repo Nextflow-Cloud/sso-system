@@ -13,6 +13,7 @@ pub struct User {
     pub mfa_enabled: bool,
     pub mfa_secret: Option<String>,
     pub public_email: bool,
+    pub platform_administrator: bool,
     // Recovery email, client-encrypted keys?
 }
 

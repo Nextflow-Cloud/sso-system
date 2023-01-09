@@ -92,6 +92,7 @@ pub async fn handle(register: web::Json<Register>) -> Result<impl Responder> {
                             email: register.email.trim().to_string(),
                             password_hash: password_hash.to_string(),
                             public_email: false,
+                            platform_administrator: false,
                         };
                         let profile_document = UserProfile {
                             id: user_id.clone(),
