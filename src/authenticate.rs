@@ -110,13 +110,14 @@ where
     type Error = actix_web::Error;
     type Future = LocalBoxFuture<'static, std::result::Result<Self::Response, Self::Error>>;
 
+    #[inline]
     fn poll_ready(
         &self,
-        cx: &mut ::core::task::Context<'_>,
-    ) -> ::core::task::Poll<std::result::Result<(), Self::Error>> {
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::result::Result<(), Self::Error>> {
         self.service
             .poll_ready(cx)
-            .map_err(::core::convert::Into::into)
+            .map_err(Into::into)
     }
 
     fn call(self: &JwtMiddleware<S>, req: ServiceRequest) -> Self::Future {

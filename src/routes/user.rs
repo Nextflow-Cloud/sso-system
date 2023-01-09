@@ -3,7 +3,7 @@ use mongodb::bson::doc;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    authenticate::UserJwt,
+    authenticate::Authenticate,
     database::profile,
     database::user,
     errors::{Error, Result},
@@ -23,7 +23,7 @@ pub struct UserResponse {
 
 pub async fn handle(
     user_id: web::Path<String>,
-    jwt: web::ReqData<Result<UserJwt>>,
+    jwt: web::ReqData<Result<Authenticate>>,
 ) -> Result<impl Responder> {
     jwt.into_inner()?;
     let collection = user::get_collection();
