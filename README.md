@@ -37,6 +37,7 @@ Before running, you should populate the environment variables with the following
 * `JWT_SECRET`: A 32-byte key to encode JWT tokens.
 * `HCAPTCHA_SECRET`: A secret from hCaptcha to verify hCaptcha tokens.
 * `CORS_ORIGINS`: A list of origins to allow CORS requests from, separated by commas.
+* `HOST`: The host to bind the server to.
 
 Currently, all variables are required for intended operation of the server.
 

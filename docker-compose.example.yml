@@ -13,6 +13,7 @@ services:
       - JWT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
       - HCAPTCHA_SECRET=0x0000000000000000000000000000000000000000
       - CORS_ORIGINS=https://www.example.com
+      - HOST=0.0.0.0:9000
     restart: always
   sso-system-mongodb:
     image: mongo
