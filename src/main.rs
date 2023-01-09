@@ -65,10 +65,12 @@ async fn main() {
                     .allow_any_header()
                     .supports_credentials(),
             )
-            .wrap(RateLimiter::builder(backend, input).add_headers().build())
-            .wrap(JwtAuthentication)
             .wrap(Logger::default())
             .service(Files::new("/bundle", "bundle"))
+            .service(
+                web::scope("/api")
+            .wrap(RateLimiter::builder(backend, input).add_headers().build())
+            .wrap(JwtAuthentication)
             .route("/user", web::patch().to(routes::account_settings::handle))
             .route("/user", web::get().to(routes::current_user::handle))
             .route("/user", web::delete().to(routes::delete::handle))
@@ -82,6 +84,7 @@ async fn main() {
             .route(
                 "/user/profile",
                 web::patch().to(routes::profile_settings::handle),
+                    ),
             )
     })
     .bind(HOST.clone())
