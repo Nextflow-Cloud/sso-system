@@ -4,11 +4,13 @@ use serde::{Deserialize, Serialize};
 use crate::{authenticate::validate_token, errors::Result};
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Validate {
     token: String,
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ValidateResponse {
     success: bool,
 }

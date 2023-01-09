@@ -16,6 +16,7 @@ use crate::{
 };
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Mfa {
     password: Option<String>,
     code: Option<String>,
@@ -24,6 +25,7 @@ pub struct Mfa {
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MfaResponse {
     continue_token: Option<String>,
     success: Option<bool>,

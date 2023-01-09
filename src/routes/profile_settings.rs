@@ -9,6 +9,7 @@ use crate::{
 };
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProfileSettings {
     display_name: Option<String>,
     description: Option<String>,
@@ -17,6 +18,7 @@ pub struct ProfileSettings {
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProfileSettingsResponse {
     success: bool,
 }

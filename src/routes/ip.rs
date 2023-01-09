@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::errors::{Error, Result};
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct IpResponse {
     ip: String,
 }

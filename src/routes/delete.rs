@@ -18,6 +18,7 @@ use crate::{
 };
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Delete {
     stage: i8,
     continue_token: Option<String>,
@@ -26,6 +27,7 @@ pub struct Delete {
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DeleteResponse {
     success: Option<bool>,
     continue_token: Option<String>,

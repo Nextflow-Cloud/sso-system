@@ -16,6 +16,7 @@ use crate::{
 };
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AccountSettings {
     username: Option<String>,
     current_password: Option<String>,
@@ -29,6 +30,7 @@ pub struct AccountSettings {
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AccountSettingsResponse {
     success: Option<bool>,
     continue_token: Option<String>,

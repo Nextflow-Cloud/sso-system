@@ -16,6 +16,7 @@ use crate::{
 };
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Register {
     username: String,
     password: String,
@@ -26,6 +27,7 @@ pub struct Register {
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RegisterResponse {
     token: String,
 }

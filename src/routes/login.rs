@@ -16,6 +16,7 @@ use crate::{
 };
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Login {
     stage: i8,
     email: Option<String>,
@@ -26,6 +27,7 @@ pub struct Login {
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LoginResponse {
     mfa_enabled: Option<bool>,
     token: Option<String>,

@@ -10,6 +10,7 @@ use crate::{
 };
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UserResponse {
     id: String,
     username: String,
