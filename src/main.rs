@@ -1,10 +1,6 @@
 use std::time::Duration;
 
 use actix_cors::Cors;
-use actix_extensible_rate_limit::{
-    backend::{memory::InMemoryBackend, SimpleInputFunctionBuilder},
-    RateLimiter,
-};
 use actix_files::Files;
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use async_std::task;
@@ -13,6 +9,7 @@ use log::info;
 use crate::{
     authenticate::JwtAuthentication,
     environment::{CORS_ORIGINS, HOST},
+    utilities::{create_rate_limiter, create_success_rate_limiter},
 };
 
 pub mod authenticate;
@@ -41,10 +38,6 @@ async fn main() {
     
     info!("Starting server on {}...", *HOST);
     HttpServer::new(|| {
-        let backend = InMemoryBackend::builder().build();
-        let input = SimpleInputFunctionBuilder::new(Duration::from_secs(5), 3)
-            .real_ip_key()
-            .build();
         App::new()
             .wrap(
                 Cors::default()
@@ -69,21 +62,37 @@ async fn main() {
             .service(Files::new("/bundle", "bundle"))
             .service(
                 web::scope("/api")
-            .wrap(RateLimiter::builder(backend, input).add_headers().build())
+                    .wrap(create_rate_limiter(Duration::from_secs(5), 20))
             .wrap(JwtAuthentication)
+                    .route("/", web::get().to(routes::service::handle))
             .route("/user", web::patch().to(routes::account_settings::handle))
             .route("/user", web::get().to(routes::current_user::handle))
             .route("/user", web::delete().to(routes::delete::handle))
             .route("/ip", web::get().to(routes::ip::handle))
-            .route("/session", web::post().to(routes::login::handle))
+                    .route(
+                        "/session",
+                        web::post()
+                            .to(routes::login::handle)
+                            .wrap(create_success_rate_limiter(Duration::from_secs(20), 5)),
+                    )
             .route("/session", web::delete().to(routes::logout::handle))
             .route("/user/mfa", web::patch().to(routes::mfa::handle))
-            .route("/user", web::post().to(routes::register::handle))
-            .route("/user/{id}", web::get().to(routes::user::handle))
-            .route("/validate", web::post().to(routes::validate::handle))
             .route(
                 "/user/profile",
                 web::patch().to(routes::profile_settings::handle),
+                    )
+                    .route(
+                        "/user",
+                        web::post()
+                            .to(routes::register::handle)
+                            .wrap(create_success_rate_limiter(Duration::from_secs(21600), 5)),
+                    ) // 6 hours
+                    .route("/user/{id}", web::get().to(routes::user::handle))
+                    .route(
+                        "/validate",
+                        web::post()
+                            .to(routes::validate::handle)
+                            .wrap(create_success_rate_limiter(Duration::from_secs(5), 10)),
                     ),
             )
     })
