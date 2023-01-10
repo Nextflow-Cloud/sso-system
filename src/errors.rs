@@ -36,6 +36,12 @@ pub enum Error {
 
     InvalidCaptcha,
     InternalCaptchaError,
+
+    RateLimited {
+        limit: u64,
+        remaining: u64,
+        reset: u64,
+    },
 }
 
 impl std::error::Error for Error {}
@@ -79,6 +85,8 @@ impl ResponseError for Error {
 
             Error::InvalidCaptcha => actix_web::http::StatusCode::BAD_REQUEST,
             Error::InternalCaptchaError => actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+
+            Error::RateLimited { .. } => actix_web::http::StatusCode::TOO_MANY_REQUESTS,
         }
     }
 
