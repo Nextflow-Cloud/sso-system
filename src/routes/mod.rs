@@ -7,5 +7,6 @@ pub mod logout;
 pub mod mfa;
 pub mod profile_settings;
 pub mod register;
+pub mod service;
 pub mod user;
 pub mod validate;
