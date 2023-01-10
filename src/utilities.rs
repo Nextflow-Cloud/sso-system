@@ -1,7 +1,18 @@
+use std::time::Duration;
+
+use actix_extensible_rate_limit::{
+    backend::{
+        memory::InMemoryBackend, SimpleInputFunctionBuilder, SimpleInputFuture, SimpleOutput,
+    },
+    HeaderCompatibleOutput, RateLimiter,
+};
+use actix_web::{dev::ServiceRequest, HttpResponse};
 use aes_gcm::{aead::Aead, Aes256Gcm, Nonce};
 use lazy_static::lazy_static;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use regex::Regex;
+
+use crate::errors::Error;
 
 lazy_static! {
     pub static ref USERNAME_RE: Regex = Regex::new(r"^[0-9A-Za-z_.-]{3,32}$").expect("Unexpected error: failed to process regex");
@@ -36,4 +47,53 @@ pub fn random_number(size: usize) -> Vec<u8> {
     let mut result: Vec<u8> = vec![0; size];
     rng.fill(&mut result[..]);
     result
+}
+
+pub fn create_rate_limiter(
+    interval: Duration,
+    max_requests: u64,
+) -> RateLimiter<
+    InMemoryBackend,
+    SimpleOutput,
+    impl Fn(&ServiceRequest) -> SimpleInputFuture + 'static,
+> {
+    let backend = InMemoryBackend::builder().build();
+    let input = SimpleInputFunctionBuilder::new(interval, max_requests)
+        .real_ip_key()
+        .build();
+    RateLimiter::builder(backend, input)
+        .request_denied_response(|o| {
+            HttpResponse::from_error(Error::RateLimited {
+                remaining: o.remaining,
+                reset: o.seconds_until_reset(),
+                limit: o.limit,
+            })
+        })
+        .add_headers()
+        .build()
+}
+
+pub fn create_success_rate_limiter(
+    interval: Duration,
+    max_requests: u64,
+) -> RateLimiter<
+    InMemoryBackend,
+    SimpleOutput,
+    impl Fn(&ServiceRequest) -> SimpleInputFuture + 'static,
+> {
+    let backend = InMemoryBackend::builder().build();
+    let input = SimpleInputFunctionBuilder::new(interval, max_requests)
+        .real_ip_key()
+        .build();
+    RateLimiter::builder(backend, input)
+        .fail_open(true)
+        .request_denied_response(|o| {
+            HttpResponse::from_error(Error::RateLimited {
+                remaining: o.remaining,
+                reset: o.seconds_until_reset(),
+                limit: o.limit,
+            })
+        })
+        .add_headers()
+        .build()
 }
