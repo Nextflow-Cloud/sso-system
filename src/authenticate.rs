@@ -115,9 +115,7 @@ where
         &self,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<std::result::Result<(), Self::Error>> {
-        self.service
-            .poll_ready(cx)
-            .map_err(Into::into)
+        self.service.poll_ready(cx).map_err(Into::into)
     }
 
     fn call(self: &JwtMiddleware<S>, req: ServiceRequest) -> Self::Future {
