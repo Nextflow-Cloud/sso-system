@@ -12,7 +12,8 @@ use crate::{
     authenticate::Authenticate,
     database::{
         blacklist::{self, Blacklist},
-        user, profile, files::File,
+        files::File,
+        profile, user,
     },
     errors::{Error, Result},
 };
@@ -93,9 +94,16 @@ pub async fn handle(
                                     None,
                                 )
                                 .await;
-                            let profile = profile::get_collection().find_one(doc! {
-                                "id": jwt.jwt_content.id,
-                            }, None).await.map_err(|_| Error::DatabaseError)?.ok_or(Error::DatabaseError)?;
+                            let profile = profile::get_collection()
+                                .find_one(
+                                    doc! {
+                                        "id": jwt.jwt_content.id,
+                                    },
+                                    None,
+                                )
+                                .await
+                                .map_err(|_| Error::DatabaseError)?
+                                .ok_or(Error::DatabaseError)?;
                             if let Ok(avatar) = File::get(&profile.avatar).await {
                                 avatar.detach().await?;
                             }

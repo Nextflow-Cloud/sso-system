@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     authenticate::Authenticate,
-    database::{profile::get_collection, files::File},
+    database::{files::File, profile::get_collection},
     errors::{Error, Result},
 };
 

@@ -2,7 +2,10 @@ use mongodb::{bson::doc, Collection};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
-use crate::{environment::CDN_MONGODB_DATABASE, errors::{Error, Result}};
+use crate::{
+    environment::CDN_MONGODB_DATABASE,
+    errors::{Error, Result},
+};
 
 use super::get_connection;
 
@@ -50,11 +53,14 @@ pub fn get_collection() -> Collection<File> {
 impl File {
     pub async fn get(id: &String) -> Result<File> {
         get_collection()
-            .find_one(doc! {
-                "id": id,
-                "deleted": false,
-                "flagged": false
-            }, None)
+            .find_one(
+                doc! {
+                    "id": id,
+                    "deleted": false,
+                    "flagged": false
+                },
+                None,
+            )
             .await
             .map_err(|_| Error::DatabaseError)?
             .ok_or(Error::DatabaseError)
@@ -62,15 +68,19 @@ impl File {
 
     pub async fn attach(&self) -> Result<()> {
         get_collection()
-            .update_one(doc! {
-                "id": &self.id,
-                "deleted": false,
-                "flagged": false,
-            }, doc! {
-                "$set": {
-                    "attached": true,
+            .update_one(
+                doc! {
+                    "id": &self.id,
+                    "deleted": false,
+                    "flagged": false,
                 },
-            }, None)
+                doc! {
+                    "$set": {
+                        "attached": true,
+                    },
+                },
+                None,
+            )
             .await
             .map_err(|_| Error::DatabaseError)?;
         Ok(())
@@ -78,15 +88,19 @@ impl File {
 
     pub async fn detach(&self) -> Result<()> {
         get_collection()
-            .update_one(doc! {
-                "id": &self.id,
-                "deleted": false,
-                "flagged": false,
-            }, doc! {
-                "$set": {
-                    "attached": false,
+            .update_one(
+                doc! {
+                    "id": &self.id,
+                    "deleted": false,
+                    "flagged": false,
                 },
-            }, None)
+                doc! {
+                    "$set": {
+                        "attached": false,
+                    },
+                },
+                None,
+            )
             .await
             .map_err(|_| Error::DatabaseError)?;
         Ok(())
