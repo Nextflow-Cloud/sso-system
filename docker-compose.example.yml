@@ -10,6 +10,7 @@ services:
     environment:
       - MONGODB_URI=mongodb://sso-system-mongodb:27017
       - MONGODB_DATABASE=sso
+      - CDN_MONGODB_DATABASE=cdn
       - JWT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
       - HCAPTCHA_SECRET=0x0000000000000000000000000000000000000000
       - CORS_ORIGINS=https://www.example.com

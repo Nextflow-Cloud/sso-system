@@ -34,6 +34,7 @@ Although Docker is the preferred method of running the server, you can do so wit
 Before running, you should populate the environment variables with the following:
 * `MONGODB_URI`: URI pointing to the MongoDB instance or cluster.
 * `MONGODB_DATABASE`: The database to use in MongoDB.
+* `CDN_MONGODB_DATABASE`: The MongoDB database used by the CDN.
 * `JWT_SECRET`: A 32-byte key to encode JWT tokens.
 * `HCAPTCHA_SECRET`: A secret from hCaptcha to verify hCaptcha tokens.
 * `CORS_ORIGINS`: A list of origins to allow CORS requests from, separated by commas.
