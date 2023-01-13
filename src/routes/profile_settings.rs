@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     authenticate::Authenticate,
-    database::profile::get_collection,
+    database::{profile::get_collection, files::File},
     errors::{Error, Result},
 };
 
@@ -34,10 +34,7 @@ pub async fn handle(
     let existing_profile = collection
         .find_one(doc! {"id": jwt.jwt_content.id.clone()}, None)
         .await;
-    if let Ok(profile) = existing_profile {
-        if profile.is_none() {
-            return Err(Error::DatabaseError);
-        }
+    if let Ok(Some(profile)) = existing_profile {
         let mut update_query = doc! {};
         if let Some(display_name) = profile_settings.display_name {
             if display_name.trim().len() > 64 {
@@ -58,7 +55,13 @@ pub async fn handle(
             update_query.insert("website", website.trim());
         }
         if let Some(avatar) = profile_settings.avatar {
-            // TODO: check CDN for avatar
+            if avatar != "default" {
+                let file = File::get(&avatar).await?;
+                file.attach().await?;
+            }
+            if let Ok(file) = File::get(&profile.id).await {
+                file.detach().await?;
+            }
             update_query.insert("avatar", avatar);
         }
         let result = collection

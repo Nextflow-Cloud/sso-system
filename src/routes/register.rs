@@ -99,8 +99,7 @@ pub async fn handle(register: web::Json<Register>) -> Result<impl Responder> {
                             display_name: register.display_name.trim().to_string(),
                             description: String::new(),
                             website: String::new(),
-                            // TODO: default avatar
-                            avatar: "default.png".to_string(),
+                            avatar: "default".to_string(),
                         };
                         let insert_result = collection.insert_one(user_document, None).await;
                         let profile_collection = crate::database::profile::get_collection();

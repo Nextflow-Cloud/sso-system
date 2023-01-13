@@ -6,6 +6,8 @@ lazy_static! {
     pub static ref MONGODB_URI: String = env::var("MONGODB_URI").expect("MONGODB_URI must be set");
     pub static ref MONGODB_DATABASE: String =
         env::var("MONGODB_DATABASE").expect("MONGODB_DATABASE must be set");
+    pub static ref CDN_MONGODB_DATABASE: String =
+        env::var("CDN_MONGODB_DATABASE").expect("CDN_MONGODB_DATABASE must be set");
     pub static ref JWT_SECRET: String = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
     pub static ref HCAPTCHA_SECRET: String =
         env::var("HCAPTCHA_SECRET").expect("HCAPTCHA_SECRET must be set");

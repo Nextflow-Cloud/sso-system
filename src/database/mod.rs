@@ -1,4 +1,5 @@
 pub mod blacklist;
+pub mod files;
 pub mod profile;
 pub mod user;
 
