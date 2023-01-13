@@ -7,13 +7,13 @@ static COLLECTION: OnceCell<Collection<User>> = OnceCell::new();
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct User {
     pub id: String,
-    // TODO: Unfortunately, stop using email hashes for spam prevention and public email
-    pub email_hash: String,
+    pub email: String,
     pub password_hash: String,
     pub username: String,
     pub mfa_enabled: bool,
     pub mfa_secret: Option<String>,
     pub public_email: bool,
+    pub platform_administrator: bool,
     // Recovery email, client-encrypted keys?
 }
 

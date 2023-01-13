@@ -1,7 +1,9 @@
 pub mod blacklist;
+pub mod files;
 pub mod profile;
 pub mod user;
 
+use log::info;
 use mongodb::{Client, Database};
 use once_cell::sync::OnceCell;
 
@@ -13,7 +15,7 @@ pub async fn connect() {
     let client = Client::with_uri_str(&*MONGODB_URI)
         .await
         .expect("Failed to connect to MongoDB");
-    println!("Database connection successful");
+    info!("Database connection successful");
     DATABASE.set(client).expect("Failed to set MongoDB client");
 }
 

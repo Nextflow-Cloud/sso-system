@@ -11,6 +11,7 @@ pub struct UserProfile {
     pub description: String,
     pub website: String,
     pub avatar: String,
+    // TODO: Other fields and better way of management
 }
 
 pub fn get_collection() -> Collection<UserProfile> {
