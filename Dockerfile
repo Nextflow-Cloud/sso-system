@@ -1,7 +1,7 @@
 FROM rust:1.66.1 AS builder
 USER 0:0
 WORKDIR /usr/app
-COPY Cargo.toml Cargo.lock .
+COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 RUN apt update && apt install -y libssl-dev pkg-config && cargo install --locked --path .
 
