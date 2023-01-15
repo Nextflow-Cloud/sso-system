@@ -3,14 +3,14 @@
 ## About
 Introducing the all-new server, which has been rewritten from the ground up for a strongly typed and fast system.
 
-Formerly built on MERN stack, the Nextflow SSO authentication system allows you to log in to all Nextflow services with a single account.
+The Nextflow SSO authentication system allows you to log in to all Nextflow services with a single account.
 * Flexible and versatile
 * Clean and fluid interface
 * Fast
 
-The entire Nextflow SSO authentication system is currently being overhauled. We are introducing a new type of stack: WARM. WARM stands for [Warp](https://crates.io/crates/warp), [Astro](https://astro.build), [Rust](https://rust-lang.org), and [MongoDB](https://mongodb.com). 
+The entire Nextflow SSO authentication system is currently being overhauled. The server-side work has mostly been completed.
 
-This is the Rust-based backend. For the Preact-based frontend, please check out [sso-system-client](https://github.com/Nextflow-Cloud/sso-system-client). There are currently no plans to overhaul the client yet. 
+This is the Rust-based backend. For the Preact-based frontend, please check out [sso-system-client](https://github.com/Nextflow-Cloud/sso-system-client). We are considering using Solid as our client-side library.
 
 ## Hosting the server
 
