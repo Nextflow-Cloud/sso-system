@@ -3,14 +3,14 @@
 ## About
 Introducing the all-new server, which has been rewritten from the ground up for a strongly typed and fast system.
 
-Formerly built on MERN stack, the Nextflow SSO authentication system allows you to log in to all Nextflow services with a single account.
+The Nextflow SSO authentication system allows you to log in to all Nextflow services with a single account.
 * Flexible and versatile
 * Clean and fluid interface
 * Fast
 
-The entire Nextflow SSO authentication system is currently being overhauled. We are introducing a new type of stack: WARM. WARM stands for [Warp](https://crates.io/crates/warp), [Astro](https://astro.build), [Rust](https://rust-lang.org), and [MongoDB](https://mongodb.com). 
+The entire Nextflow SSO authentication system is currently being overhauled. The server-side work has mostly been completed.
 
-This is the Rust-based backend. For the Preact-based frontend, please check out [sso-system-client](https://github.com/Nextflow-Cloud/sso-system-client). There are currently no plans to overhaul the client yet. 
+This is the Rust-based backend. For the Preact-based frontend, please check out [sso-system-client](https://github.com/Nextflow-Cloud/sso-system-client). We are considering using Solid as our client-side library.
 
 ## Hosting the server
 
@@ -34,11 +34,11 @@ Although Docker is the preferred method of running the server, you can do so wit
 Before running, you should populate the environment variables with the following:
 * `MONGODB_URI`: URI pointing to the MongoDB instance or cluster.
 * `MONGODB_DATABASE`: The database to use in MongoDB.
-* `JWT_SECRET`: A 32 byte key to encode JWT tokens.
-* `SALT`: A Bcrypt salt to hash emails.
+* `CDN_MONGODB_DATABASE`: The MongoDB database used by the CDN.
+* `JWT_SECRET`: A 32-byte key to encode JWT tokens.
 * `HCAPTCHA_SECRET`: A secret from hCaptcha to verify hCaptcha tokens.
 * `CORS_ORIGINS`: A list of origins to allow CORS requests from, separated by commas.
-* `ROOT_DOMAIN`: The root domain of the server. This is used for cookies.
+* `HOST`: The host to bind the server to.
 
 Currently, all variables are required for intended operation of the server.
 
