@@ -1,8 +1,12 @@
 use std::time::Duration;
 
 use actix_cors::Cors;
-use actix_files::Files;
-use actix_web::{middleware::Logger, web, App, HttpServer};
+use actix_files::{Files, NamedFile};
+use actix_web::{
+    dev::{ServiceRequest, ServiceResponse},
+    middleware::Logger,
+    web, App, HttpServer,
+};
 use async_std::task;
 use log::info;
 
@@ -60,7 +64,6 @@ async fn main() {
                     .supports_credentials(),
             )
             .wrap(Logger::default())
-            .service(Files::new("/bundle", "bundle"))
             .service(
                 web::scope("/api")
                     .wrap(create_rate_limiter(Duration::from_secs(5), 20))
@@ -95,6 +98,16 @@ async fn main() {
                             .to(routes::validate::handle)
                             .wrap(create_success_rate_limiter(Duration::from_secs(5), 10)),
                     ),
+            )
+            .service(
+                Files::new("/", "bundle")
+                    .index_file("index.html")
+                    .default_handler(|req: ServiceRequest| async {
+                        let (request, _) = req.into_parts();
+                        let response =
+                            NamedFile::open("bundle/index.html")?.into_response(&request);
+                        Ok(ServiceResponse::new(request, response))
+                    }),
             )
     })
     .bind(HOST.clone())
