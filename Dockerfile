@@ -1,6 +1,12 @@
-FROM rust:1.66.1
-
+FROM rust:1.66.1 AS builder
+USER 0:0
 WORKDIR /usr/app
-COPY . .
-RUN cargo install --path .
-CMD ["sso-system"]
+COPY Cargo.toml Cargo.lock .
+COPY src ./src
+RUN apt update && apt install -y libssl-dev pkg-config && cargo install --locked --path .
+
+FROM debian:bullseye-slim
+WORKDIR /usr/app
+RUN apt update && apt install -y ca-certificates
+COPY --from=builder /usr/local/cargo/bin/sso-system ./
+CMD ["./sso-system"]
