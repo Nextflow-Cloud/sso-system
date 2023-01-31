@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 async-std = { version = "1.12.0", features = ["attributes", "tokio1"] }
-futures-util = "0.3.25"
+futures-util = "0.3.26"
 regex = "1.7.1"
 
 dashmap = "5.4.0"
