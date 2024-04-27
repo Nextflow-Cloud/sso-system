@@ -524,6 +524,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "604178f6c5c21f02dc555784810edfb88d34ac2c73b2eae109655649ee73ce3d"
 
 [[package]]
+name = "base64"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9475866fec1451be56a3c2400fd081ff546538961565ccb5b7142cbd22bc7a51"
+
+[[package]]
 name = "bcrypt"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2060,6 +2066,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4339fc7a1021c9c1621d87f5e3505f2805c8c105420ba2f2a4df86814590c142"
 
 [[package]]
+name = "qrcodegen-image"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f59a7c7ddb94c99fa3942dd761dbb305bca462b71d7bd9bcb3f9ff4d454d5736"
+dependencies = [
+ "base64 0.22.0",
+ "image",
+ "qrcodegen",
+]
+
+[[package]]
 name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2787,16 +2804,14 @@ dependencies = [
 
 [[package]]
 name = "totp-rs"
-version = "5.2.0"
+version = "5.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de057280e901b0cc5cd5f94636c54e89958757b8cd573cdf29703496d0d95df9"
+checksum = "6c4ae9724c5888c0417d2396037ed3b60665925624766416e3e342b6ba5dbd3f"
 dependencies = [
  "base32",
- "base64 0.21.2",
  "constant_time_eq",
  "hmac",
- "image",
- "qrcodegen",
+ "qrcodegen-image",
  "sha1",
  "sha2",
  "url",

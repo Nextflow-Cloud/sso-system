@@ -97,7 +97,7 @@ pub async fn handle(
                     )
                     .expect("Unexpected error: failed to initiate TOTP");
                     let qr = totp
-                        .get_qr()
+                        .get_qr_base64()
                         .expect("Unexpected error: failed to generate QR code");
                     let continue_token = ulid::Ulid::new().to_string();
                     let duration = SystemTime::now()
