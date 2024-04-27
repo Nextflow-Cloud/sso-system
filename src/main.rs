@@ -40,7 +40,7 @@ async fn main() {
             task::spawn(async { cleanup::run() });
         }
     });
-    
+
     info!("Starting server on {}...", *HOST);
     HttpServer::new(|| {
         App::new()
@@ -67,23 +67,23 @@ async fn main() {
             .service(
                 web::scope("/api")
                     .wrap(create_rate_limiter(Duration::from_secs(5), 20))
-            .wrap(JwtAuthentication)
+                    .wrap(JwtAuthentication)
                     .route("/", web::get().to(routes::service::handle))
-            .route("/user", web::patch().to(routes::account_settings::handle))
-            .route("/user", web::get().to(routes::current_user::handle))
-            .route("/user", web::delete().to(routes::delete::handle))
-            .route("/ip", web::get().to(routes::ip::handle))
+                    .route("/user", web::patch().to(routes::account_settings::handle))
+                    .route("/user", web::get().to(routes::current_user::handle))
+                    .route("/user", web::delete().to(routes::delete::handle))
+                    .route("/ip", web::get().to(routes::ip::handle))
                     .route(
                         "/session",
                         web::post()
                             .to(routes::login::handle)
                             .wrap(create_success_rate_limiter(Duration::from_secs(20), 5)),
                     )
-            .route("/session", web::delete().to(routes::logout::handle))
-            .route("/user/mfa", web::patch().to(routes::mfa::handle))
-            .route(
-                "/user/profile",
-                web::patch().to(routes::profile_settings::handle),
+                    .route("/session", web::delete().to(routes::logout::handle))
+                    .route("/user/mfa", web::patch().to(routes::mfa::handle))
+                    .route(
+                        "/user/profile",
+                        web::patch().to(routes::profile_settings::handle),
                     )
                     .route(
                         "/user",
