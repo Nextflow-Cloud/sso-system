@@ -120,7 +120,7 @@ pub async fn handle(
                         }
                     }
                 } else {
-                    Err(Error::IncorrectPassword)
+                    Err(Error::IncorrectCredentials)
                 }
             } else {
                 Err(Error::DatabaseError)

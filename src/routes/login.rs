@@ -34,12 +34,6 @@ pub struct LoginResponse {
     continue_token: Option<String>,
 }
 
-pub struct PendingLogin {
-    pub email: String,
-    pub time: u64,
-    pub user: User,
-}
-
 pub struct PendingMfa {
     pub time: u64,
     pub user: User,
@@ -47,7 +41,6 @@ pub struct PendingMfa {
 }
 
 lazy_static! {
-    pub static ref PENDING_LOGINS: DashMap<String, PendingLogin> = DashMap::new();
     pub static ref PENDING_MFAS: DashMap<String, PendingMfa> = DashMap::new();
 }
 
@@ -57,112 +50,93 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
         1 => {
             let collection = crate::database::user::get_collection();
             if let Some(email) = login.email {
-                let result = collection
-                    .find_one(
-                        doc! {
-                            "email": email.clone()
-                        },
-                        None,
-                    )
-                    .await;
-                if let Ok(user) = result {
-                    if let Some(user_exists) = user {
-                        let continue_token = ulid::Ulid::new().to_string();
-                        let duration = SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .expect("Unexpected error: time went backwards");
-                        let login_session = PendingLogin {
-                            email,
-                            time: duration.as_secs(),
-                            user: user_exists,
-                        };
-                        PENDING_LOGINS.insert(continue_token.clone(), login_session);
-                        Ok(web::Json(LoginResponse {
-                            continue_token: Some(continue_token),
-                            mfa_enabled: None,
-                            token: None,
-                        }))
+                if let Some(password) = login.password {
+                    let result = collection
+                        .find_one(
+                            doc! {
+                                "email": email.clone()
+                            },
+                            None,
+                        )
+                        .await;
+                    if let Ok(user) = result {
+                        if let Some(user_exists) = user {
+                            // let continue_token = ulid::Ulid::new().to_string();
+                            // let duration = SystemTime::now()
+                            //     .duration_since(UNIX_EPOCH)
+                            //     .expect("Unexpected error: time went backwards");
+                            // let login_session = PendingLogin {
+                            //     email,
+                            //     time: duration.as_secs(),
+                            //     user: user_exists,
+                            // };
+                            // PENDING_LOGINS.insert(continue_token.clone(), login_session);
+                            // Ok(web::Json(LoginResponse {
+                            //     continue_token: Some(continue_token),
+                            //     mfa_enabled: None,
+                            //     token: None,
+                            // }))
+                            let duration = SystemTime::now()
+                                .duration_since(UNIX_EPOCH)
+                                .expect("Unexpected error: time went backwards");
+                            let verified = verify(password, &user_exists.password_hash)
+                                .expect("Unexpected error: failed to verify password");
+                            if verified {
+                                if user_exists.mfa_enabled {
+                                    let continue_token = ulid::Ulid::new().to_string();
+                                    let pending_mfa = PendingMfa {
+                                        time: duration.as_secs(),
+                                        user: user_exists.clone(),
+                                        email: email.clone(),
+                                    };
+                                    PENDING_MFAS.insert(continue_token.clone(), pending_mfa);
+                                    Ok(web::Json(LoginResponse {
+                                        token: None,
+                                        continue_token: Some(continue_token),
+                                        mfa_enabled: Some(true),
+                                    }))
+                                } else {
+                                    let persist = login.persist.unwrap_or(false);
+                                    let millis = duration.as_millis();
+                                    let expires_at = if persist {
+                                        millis + 2592000000
+                                    } else {
+                                        millis + 604800000
+                                    };
+                                    let jwt_object = UserJwt {
+                                        id: user_exists.id.clone(),
+                                        issued_at: millis,
+                                        expires_at,
+                                    };
+                                    let token = encode(
+                                        &Header::default(),
+                                        &jwt_object,
+                                        &EncodingKey::from_secret(JWT_SECRET.as_ref()),
+                                    )
+                                    .expect("Unexpected error: failed to encode token");
+                                    Ok(web::Json(LoginResponse {
+                                        token: Some(token),
+                                        continue_token: None,
+                                        mfa_enabled: Some(false),
+                                    }))
+                                }
+                            } else {
+                                Err(Error::IncorrectCredentials)
+                            }
+                        } else {
+                            Err(Error::IncorrectCredentials)
+                        }
                     } else {
-                        Err(Error::IncorrectEmail)
+                        Err(Error::DatabaseError)
                     }
                 } else {
-                    Err(Error::DatabaseError)
+                    Err(Error::MissingPassword)
                 }
             } else {
                 Err(Error::MissingEmail)
             }
         }
         2 => {
-            if let Some(continue_token) = login.continue_token {
-                let pending_login = PENDING_LOGINS.get(&continue_token);
-                if let Some(pending_login) = pending_login {
-                    let duration = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect("Unexpected error: time went backwards");
-                    if duration.as_secs() - pending_login.time > 3600 {
-                        drop(pending_login);
-                        PENDING_LOGINS.remove(&continue_token);
-                        Err(Error::SessionExpired)
-                    } else if let Some(password) = login.password {
-                        let verified = verify(password, &pending_login.user.password_hash)
-                            .expect("Unexpected error: failed to verify password");
-                        if verified {
-                            if pending_login.user.mfa_enabled {
-                                let continue_token = ulid::Ulid::new().to_string();
-                                let pending_mfa = PendingMfa {
-                                    time: duration.as_secs(),
-                                    user: pending_login.user.clone(),
-                                    email: pending_login.email.clone(),
-                                };
-                                PENDING_MFAS.insert(continue_token.clone(), pending_mfa);
-                                drop(pending_login);
-                                PENDING_LOGINS.remove(&continue_token);
-                                Ok(web::Json(LoginResponse {
-                                    token: None,
-                                    continue_token: Some(continue_token),
-                                    mfa_enabled: Some(true),
-                                }))
-                            } else {
-                                let persist = login.persist.unwrap_or(false);
-                                let millis = duration.as_millis();
-                                let expires_at = if persist {
-                                    millis + 2592000000
-                                } else {
-                                    millis + 604800000
-                                };
-                                let jwt_object = UserJwt {
-                                    id: pending_login.user.id.clone(),
-                                    issued_at: millis,
-                                    expires_at,
-                                };
-                                let token = encode(
-                                    &Header::default(),
-                                    &jwt_object,
-                                    &EncodingKey::from_secret(JWT_SECRET.as_ref()),
-                                )
-                                .expect("Unexpected error: failed to encode token");
-                                drop(pending_login);
-                                PENDING_LOGINS.remove(&continue_token);
-                                Ok(web::Json(LoginResponse {
-                                    token: Some(token),
-                                    continue_token: None,
-                                    mfa_enabled: Some(false),
-                                }))
-                            }
-                        } else {
-                            Err(Error::IncorrectPassword)
-                        }
-                    } else {
-                        Err(Error::MissingPassword)
-                    }
-                } else {
-                    Err(Error::SessionExpired)
-                }
-            } else {
-                Err(Error::MissingContinueToken)
-            }
-        }
-        3 => {
             if let Some(continue_token) = login.continue_token {
                 let mfa_session = PENDING_MFAS.get(&continue_token);
                 if let Some(mfa_session) = mfa_session {

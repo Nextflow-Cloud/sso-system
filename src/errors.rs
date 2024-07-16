@@ -24,8 +24,7 @@ pub enum Error {
     DescriptionTooLong,
     WebsiteTooLong,
 
-    IncorrectEmail,
-    IncorrectPassword,
+    IncorrectCredentials,
     IncorrectCode,
 
     MissingContinueToken,
@@ -73,8 +72,7 @@ impl ResponseError for Error {
             Error::DescriptionTooLong => actix_web::http::StatusCode::BAD_REQUEST,
             Error::WebsiteTooLong => actix_web::http::StatusCode::BAD_REQUEST,
 
-            Error::IncorrectEmail => actix_web::http::StatusCode::UNAUTHORIZED,
-            Error::IncorrectPassword => actix_web::http::StatusCode::UNAUTHORIZED,
+            Error::IncorrectCredentials => actix_web::http::StatusCode::UNAUTHORIZED,
             Error::IncorrectCode => actix_web::http::StatusCode::UNAUTHORIZED,
 
             Error::MissingContinueToken => actix_web::http::StatusCode::BAD_REQUEST,

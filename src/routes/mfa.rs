@@ -66,7 +66,7 @@ pub async fn handle(
                 let verified = verify(password, &user.password_hash)
                     .expect("Unexpected error: failed to verify password");
                 if !verified {
-                    return Err(Error::IncorrectPassword);
+                    return Err(Error::IncorrectCredentials);
                 }
                 if user.mfa_enabled {
                     let continue_token = ulid::Ulid::new().to_string();

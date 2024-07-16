@@ -132,7 +132,7 @@ pub async fn handle(
                         continue_token: None,
                     }))
                 } else {
-                    Err(Error::IncorrectPassword)
+                    Err(Error::IncorrectCredentials)
                 }
             } else {
                 Err(Error::MissingPassword)
