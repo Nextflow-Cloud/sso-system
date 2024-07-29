@@ -59,70 +59,67 @@ pub async fn handle(
     if mfa.stage == 1 {
         let collection = get_collection();
         let user = collection
-            .find_one(Some(doc! {"id": jwt.jwt_content.id}), None)
-            .await;
-        if let Ok(Some(user)) = user {
-            if let Some(password) = mfa.password {
-                let verified = verify(password, &user.password_hash)
-                    .expect("Unexpected error: failed to verify password");
-                if !verified {
-                    return Err(Error::IncorrectPassword);
-                }
-                if user.mfa_enabled {
-                    let continue_token = ulid::Ulid::new().to_string();
-                    let duration = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect("Unexpected error: time went backwards");
-                    let login_session = PendingMfaDisable {
-                        time: duration.as_secs(),
-                        user,
-                    };
-                    PENDING_MFA_DISABLES.insert(continue_token.clone(), login_session);
-                    Ok(web::Json(MfaResponse {
-                        continue_token: Some(continue_token),
-                        success: None,
-                        qr: None,
-                        secret: None,
-                    }))
-                } else {
-                    let secret = random_number(160);
-                    let totp = TOTP::new(
-                        totp_rs::Algorithm::SHA256,
-                        8,
-                        1,
-                        30,
-                        secret.clone(),
-                        Some("Nextflow Cloud Technologies".to_string()),
-                        user.username.clone(),
-                    )
-                    .expect("Unexpected error: failed to initiate TOTP");
-                    let qr = totp
-                        .get_qr_base64()
-                        .expect("Unexpected error: failed to generate QR code");
-                    let continue_token = ulid::Ulid::new().to_string();
-                    let duration = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect("Unexpected error: time went backwards");
-                    let code = Secret::Raw(secret.to_vec()).to_encoded().to_string();
-                    let session = PendingMfaEnable {
-                        time: duration.as_secs(),
-                        user,
-                        secret: code.clone(),
-                        totp,
-                    };
-                    PENDING_MFA_ENABLES.insert(continue_token.clone(), session);
-                    Ok(web::Json(MfaResponse {
-                        continue_token: Some(continue_token),
-                        qr: Some(qr),
-                        secret: Some(code),
-                        success: None,
-                    }))
-                }
+            .find_one(doc! {"id": jwt.jwt_content.id})
+            .await?
+            .ok_or(Error::DatabaseError)?;
+        if let Some(password) = mfa.password {
+            let verified = verify(password, &user.password_hash)
+                .expect("Unexpected error: failed to verify password");
+            if !verified {
+                return Err(Error::IncorrectCredentials);
+            }
+            if user.mfa_enabled {
+                let continue_token = ulid::Ulid::new().to_string();
+                let duration = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .expect("Unexpected error: time went backwards");
+                let login_session = PendingMfaDisable {
+                    time: duration.as_secs(),
+                    user,
+                };
+                PENDING_MFA_DISABLES.insert(continue_token.clone(), login_session);
+                Ok(web::Json(MfaResponse {
+                    continue_token: Some(continue_token),
+                    success: None,
+                    qr: None,
+                    secret: None,
+                }))
             } else {
-                Err(Error::MissingPassword)
+                let secret = random_number(160);
+                let totp = TOTP::new(
+                    totp_rs::Algorithm::SHA256,
+                    8,
+                    1,
+                    30,
+                    secret.clone(),
+                    Some("Nextflow Cloud Technologies".to_string()),
+                    user.username.clone(),
+                )
+                .expect("Unexpected error: failed to initiate TOTP");
+                let qr = totp
+                    .get_qr_base64()
+                    .expect("Unexpected error: failed to generate QR code");
+                let continue_token = ulid::Ulid::new().to_string();
+                let duration = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .expect("Unexpected error: time went backwards");
+                let code = Secret::Raw(secret.to_vec()).to_encoded().to_string();
+                let session = PendingMfaEnable {
+                    time: duration.as_secs(),
+                    user,
+                    secret: code.clone(),
+                    totp,
+                };
+                PENDING_MFA_ENABLES.insert(continue_token.clone(), session);
+                Ok(web::Json(MfaResponse {
+                    continue_token: Some(continue_token),
+                    qr: Some(qr),
+                    secret: Some(code),
+                    success: None,
+                }))
             }
         } else {
-            Err(Error::DatabaseError)
+            Err(Error::MissingPassword)
         }
     } else if mfa.stage == 2 {
         if let Some(code) = mfa.code {
@@ -143,7 +140,7 @@ pub async fn handle(
                         .expect("Unexpected error: failed to generate code");
                     if current == code {
                         let collection = get_collection();
-                        let result = collection
+                        collection
                             .update_one(
                                 doc! {
                                     "id": enable_session.user.id.clone(),
@@ -154,21 +151,16 @@ pub async fn handle(
                                         "mfa_secret": enable_session.secret.clone()
                                     }
                                 },
-                                None,
                             )
-                            .await;
-                        if result.is_ok() {
-                            drop(enable_session);
-                            PENDING_MFA_ENABLES.remove(&continue_token);
-                            Ok(web::Json(MfaResponse {
-                                continue_token: None,
-                                qr: None,
-                                secret: None,
-                                success: Some(true),
-                            }))
-                        } else {
-                            Err(Error::DatabaseError)
-                        }
+                            .await?;
+                        drop(enable_session);
+                        PENDING_MFA_ENABLES.remove(&continue_token);
+                        Ok(web::Json(MfaResponse {
+                            continue_token: None,
+                            qr: None,
+                            secret: None,
+                            success: Some(true),
+                        }))
                     } else {
                         Err(Error::IncorrectCode)
                     }
@@ -201,7 +193,7 @@ pub async fn handle(
                             .expect("Unexpected error: failed to generate code");
                         if current == code {
                             let collection = get_collection();
-                            let result = collection
+                            collection
                                 .update_one(
                                     doc! {
                                         "id": disable_session.user.id.clone(),
@@ -212,21 +204,16 @@ pub async fn handle(
                                             "mfa_secret": None::<String>
                                         }
                                     },
-                                    None,
                                 )
-                                .await;
-                            if result.is_ok() {
-                                drop(disable_session);
-                                PENDING_MFA_DISABLES.remove(&continue_token);
-                                Ok(web::Json(MfaResponse {
-                                    continue_token: None,
-                                    qr: None,
-                                    secret: None,
-                                    success: Some(true),
-                                }))
-                            } else {
-                                Err(Error::DatabaseError)
-                            }
+                                .await?;
+                            drop(disable_session);
+                            PENDING_MFA_DISABLES.remove(&continue_token);
+                            Ok(web::Json(MfaResponse {
+                                continue_token: None,
+                                qr: None,
+                                secret: None,
+                                success: Some(true),
+                            }))
                         } else {
                             Err(Error::IncorrectCode)
                         }

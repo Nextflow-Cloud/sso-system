@@ -17,11 +17,6 @@ pub fn run() {
             delete::PENDING_DELETES.remove(pending.key());
         }
     }
-    for pending in login::PENDING_LOGINS.iter() {
-        if now - pending.value().time > 3600 {
-            login::PENDING_LOGINS.remove(pending.key());
-        }
-    }
     for pending in login::PENDING_MFAS.iter() {
         if now - pending.value().time > 3600 {
             login::PENDING_MFAS.remove(pending.key());

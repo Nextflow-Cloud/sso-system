@@ -31,33 +31,23 @@ pub async fn handle(jwt: web::ReqData<Result<Authenticate>>) -> Result<impl Resp
             doc! {
                 "id": jwt.jwt_content.id.clone()
             },
-            None,
         )
-        .await;
+        .await?.ok_or(Error::DatabaseError)?;
     let profile_result = profile_collection
         .find_one(
             doc! {
                 "id": jwt.jwt_content.id.clone()
             },
-            None,
         )
-        .await;
-    if let Ok(Some(result)) = result {
-        if let Ok(Some(profile_result)) = profile_result {
-            Ok(web::Json(CurrentUserResponse {
-                avatar: profile_result.avatar,
-                description: profile_result.description,
-                display_name: profile_result.display_name,
-                id: jwt.jwt_content.id,
-                mfa_enabled: result.mfa_enabled,
-                public_email: result.public_email,
-                username: result.username,
-                website: profile_result.website,
-            }))
-        } else {
-            Err(Error::DatabaseError)
-        }
-    } else {
-        Err(Error::DatabaseError)
-    }
+        .await?.ok_or(Error::DatabaseError)?;
+    Ok(web::Json(CurrentUserResponse {
+        avatar: profile_result.avatar,
+        description: profile_result.description,
+        display_name: profile_result.display_name,
+        id: jwt.jwt_content.id,
+        mfa_enabled: result.mfa_enabled,
+        public_email: result.public_email,
+        username: result.username,
+        website: profile_result.website,
+    }))
 }

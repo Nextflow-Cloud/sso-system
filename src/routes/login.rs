@@ -10,7 +10,7 @@ use totp_rs::{Algorithm, Secret, TOTP};
 
 use crate::{
     authenticate::UserJwt,
-    database::user::User,
+    database::{session::Session, user::User},
     environment::JWT_SECRET,
     errors::{Error, Result},
 };
@@ -24,6 +24,7 @@ pub struct Login {
     password: Option<String>,
     persist: Option<bool>,
     code: Option<String>,
+    friendly_name: Option<String>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -34,12 +35,6 @@ pub struct LoginResponse {
     continue_token: Option<String>,
 }
 
-pub struct PendingLogin {
-    pub email: String,
-    pub time: u64,
-    pub user: User,
-}
-
 pub struct PendingMfa {
     pub time: u64,
     pub user: User,
@@ -47,7 +42,6 @@ pub struct PendingMfa {
 }
 
 lazy_static! {
-    pub static ref PENDING_LOGINS: DashMap<String, PendingLogin> = DashMap::new();
     pub static ref PENDING_MFAS: DashMap<String, PendingMfa> = DashMap::new();
 }
 
@@ -57,66 +51,29 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
         1 => {
             let collection = crate::database::user::get_collection();
             if let Some(email) = login.email {
-                let result = collection
-                    .find_one(
-                        doc! {
-                            "email": email.clone()
-                        },
-                        None,
-                    )
-                    .await;
-                if let Ok(user) = result {
-                    if let Some(user_exists) = user {
-                        let continue_token = ulid::Ulid::new().to_string();
+                if let Some(password) = login.password {
+                    let result = collection
+                        .find_one(
+                            doc! {
+                                "email": email.clone()
+                            },
+                        )
+                        .await?;
+                    if let Some(user_exists) = result {
                         let duration = SystemTime::now()
                             .duration_since(UNIX_EPOCH)
                             .expect("Unexpected error: time went backwards");
-                        let login_session = PendingLogin {
-                            email,
-                            time: duration.as_secs(),
-                            user: user_exists,
-                        };
-                        PENDING_LOGINS.insert(continue_token.clone(), login_session);
-                        Ok(web::Json(LoginResponse {
-                            continue_token: Some(continue_token),
-                            mfa_enabled: None,
-                            token: None,
-                        }))
-                    } else {
-                        Err(Error::IncorrectEmail)
-                    }
-                } else {
-                    Err(Error::DatabaseError)
-                }
-            } else {
-                Err(Error::MissingEmail)
-            }
-        }
-        2 => {
-            if let Some(continue_token) = login.continue_token {
-                let pending_login = PENDING_LOGINS.get(&continue_token);
-                if let Some(pending_login) = pending_login {
-                    let duration = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect("Unexpected error: time went backwards");
-                    if duration.as_secs() - pending_login.time > 3600 {
-                        drop(pending_login);
-                        PENDING_LOGINS.remove(&continue_token);
-                        Err(Error::SessionExpired)
-                    } else if let Some(password) = login.password {
-                        let verified = verify(password, &pending_login.user.password_hash)
-                            .expect("Unexpected error: failed to verify password");
+                        let verified = verify(password, &user_exists.password_hash)
+                        .expect("Unexpected error: failed to verify password");
                         if verified {
-                            if pending_login.user.mfa_enabled {
+                            if user_exists.mfa_enabled {
                                 let continue_token = ulid::Ulid::new().to_string();
                                 let pending_mfa = PendingMfa {
                                     time: duration.as_secs(),
-                                    user: pending_login.user.clone(),
-                                    email: pending_login.email.clone(),
+                                    user: user_exists.clone(),
+                                    email: email.clone(),
                                 };
                                 PENDING_MFAS.insert(continue_token.clone(), pending_mfa);
-                                drop(pending_login);
-                                PENDING_LOGINS.remove(&continue_token);
                                 Ok(web::Json(LoginResponse {
                                     token: None,
                                     continue_token: Some(continue_token),
@@ -131,7 +88,7 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                                     millis + 604800000
                                 };
                                 let jwt_object = UserJwt {
-                                    id: pending_login.user.id.clone(),
+                                    id: user_exists.id.clone(),
                                     issued_at: millis,
                                     expires_at,
                                 };
@@ -141,8 +98,17 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                                     &EncodingKey::from_secret(JWT_SECRET.as_ref()),
                                 )
                                 .expect("Unexpected error: failed to encode token");
-                                drop(pending_login);
-                                PENDING_LOGINS.remove(&continue_token);
+                                let sid = ulid::Ulid::new().to_string();
+                                let session = Session { 
+                                    id: sid, 
+                                    token: token.clone(), 
+                                    friendly_name: login.friendly_name.unwrap_or("Unknown".to_owned()),
+                                    user_id: user_exists.id.clone(), 
+                                };
+                                let sessions = crate::database::session::get_collection();
+                                sessions.insert_one(
+                                    session,
+                                ).await?;
                                 Ok(web::Json(LoginResponse {
                                     token: Some(token),
                                     continue_token: None,
@@ -150,19 +116,19 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                                 }))
                             }
                         } else {
-                            Err(Error::IncorrectPassword)
+                            Err(Error::IncorrectCredentials)
                         }
                     } else {
-                        Err(Error::MissingPassword)
+                        Err(Error::IncorrectCredentials)
                     }
                 } else {
-                    Err(Error::SessionExpired)
+                    Err(Error::MissingPassword)
                 }
             } else {
-                Err(Error::MissingContinueToken)
+                Err(Error::MissingEmail)
             }
         }
-        3 => {
+        2 => {
             if let Some(continue_token) = login.continue_token {
                 let mfa_session = PENDING_MFAS.get(&continue_token);
                 if let Some(mfa_session) = mfa_session {
@@ -198,8 +164,9 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                             } else {
                                 millis + 604800000
                             };
+                            let id = mfa_session.user.id.clone();
                             let jwt_object = UserJwt {
-                                id: mfa_session.user.id.clone(),
+                                id: id.clone(),
                                 issued_at: millis,
                                 expires_at,
                             };
@@ -211,6 +178,17 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                             .expect("Unexpected error: failed to encode token");
                             drop(mfa_session);
                             PENDING_MFAS.remove(&continue_token);
+                            let sid = ulid::Ulid::new().to_string();
+                            let session = Session { 
+                                id: sid, 
+                                token: token.clone(), 
+                                friendly_name: login.friendly_name.unwrap_or("Unknown".to_owned()),
+                                user_id: id, 
+                            };
+                            let sessions = crate::database::session::get_collection();
+                            sessions.insert_one(
+                                session,
+                            ).await?;
                             Ok(web::Json(LoginResponse {
                                 token: Some(token),
                                 continue_token: None,

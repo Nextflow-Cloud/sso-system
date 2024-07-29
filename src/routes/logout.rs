@@ -1,10 +1,11 @@
 use actix_web::{web, Responder};
+use mongodb::bson::doc;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     authenticate::Authenticate,
-    database::blacklist::{get_collection, Blacklist},
-    errors::{Error, Result},
+    database::session::get_collection,
+    errors::Result,
 };
 
 #[derive(Deserialize, Serialize)]
@@ -15,12 +16,7 @@ pub struct LogoutResponse {
 
 pub async fn handle(jwt: web::ReqData<Result<Authenticate>>) -> Result<impl Responder> {
     let jwt = jwt.into_inner()?;
-    let blacklist = get_collection();
-    let document = Blacklist { token: jwt.jwt };
-    let result = blacklist.insert_one(document, None).await;
-    if result.is_ok() {
-        Ok(web::Json(LogoutResponse { success: true }))
-    } else {
-        Err(Error::DatabaseError)
-    }
+    let sessions = get_collection();
+    sessions.delete_one(doc! { "token": jwt.jwt }).await?;
+    Ok(web::Json(LogoutResponse { success: true }))
 }

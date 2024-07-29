@@ -47,6 +47,6 @@ After doing so, run `cargo run --release` to build and run the server. It may ta
 ## Contribute
 Nextflow Cloud Technologies is committed to open-source software and free use. This means that you are free to view, modify, contribute, and support the project. Making a pull request with something useful is highly encouraged as this project is made possible by contributors like you who support the project.
 
-* `prod`: Most stable branch: used in production [here](https://sso.nextflow.cloud). 
-* `main`: Beta or release preview: mostly stable and likely will be pushed to production with a couple fixes.
+* ~~`prod`~~: ~~Most stable branch: used in production [here](https://sso.nextflow.cloud).~~ *dormant, inactive as of 2024
+* `main`: ~~Beta or release preview: mostly stable and likely will be pushed to production with a couple fixes.~~ In current deployment at [sso.nextflow.cloud](https://sso.nextflow.cloud).
 * `dev`: Active development: expect a variety of unstable and/or unfinished features and fixes.

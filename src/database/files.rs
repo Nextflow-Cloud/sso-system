@@ -59,10 +59,8 @@ impl File {
                     "deleted": false,
                     "flagged": false
                 },
-                None,
             )
-            .await
-            .map_err(|_| Error::DatabaseError)?
+            .await?
             .ok_or(Error::DatabaseError)
     }
 
@@ -79,10 +77,8 @@ impl File {
                         "attached": true,
                     },
                 },
-                None,
             )
-            .await
-            .map_err(|_| Error::DatabaseError)?;
+            .await?;
         Ok(())
     }
 
@@ -99,10 +95,8 @@ impl File {
                         "attached": false,
                     },
                 },
-                None,
             )
-            .await
-            .map_err(|_| Error::DatabaseError)?;
+            .await?;
         Ok(())
     }
 }

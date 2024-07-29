@@ -11,7 +11,7 @@ use totp_rs::{Secret, TOTP};
 use crate::{
     authenticate::Authenticate,
     database::{
-        blacklist::{self, Blacklist},
+        session,
         files::File,
         profile, user,
     },
@@ -58,72 +58,57 @@ pub async fn handle(
                     doc! {
                         "id": jwt.jwt_content.id.clone()
                     },
-                    None,
                 )
-                .await;
-            if let Ok(Some(user)) = user {
-                let verified = verify(password, &user.password_hash)
-                    .expect("Unexpected error: failed to verify password");
-                if verified {
-                    if user.mfa_enabled {
-                        let continue_token = ulid::Ulid::new().to_string();
-                        let duration = SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .expect("Unexpected error: time went backwards");
-                        let delete_session = PendingDelete {
-                            id: jwt.jwt_content.id,
-                            mfa_secret: user.mfa_secret.unwrap(),
-                            time: duration.as_secs(),
-                        };
-                        PENDING_DELETES.insert(continue_token.clone(), delete_session);
-                        Ok(web::Json(DeleteResponse {
-                            continue_token: Some(continue_token),
-                            success: None,
-                        }))
-                    } else {
-                        let blacklist = blacklist::get_collection();
-                        let blacklist_result = blacklist
-                            .insert_one(Blacklist { token: jwt.jwt }, None)
-                            .await;
-                        if blacklist_result.is_ok() {
-                            let result = collection
-                                .delete_one(
-                                    doc! {
-                                        "id": &jwt.jwt_content.id
-                                    },
-                                    None,
-                                )
-                                .await;
-                            let profile = profile::get_collection()
-                                .find_one(
-                                    doc! {
-                                        "id": jwt.jwt_content.id,
-                                    },
-                                    None,
-                                )
-                                .await
-                                .map_err(|_| Error::DatabaseError)?
-                                .ok_or(Error::DatabaseError)?;
-                            if let Ok(avatar) = File::get(&profile.avatar).await {
-                                avatar.detach().await?;
-                            }
-                            if result.is_ok() {
-                                Ok(web::Json(DeleteResponse {
-                                    success: Some(true),
-                                    continue_token: None,
-                                }))
-                            } else {
-                                Err(Error::DatabaseError)
-                            }
-                        } else {
-                            Err(Error::DatabaseError)
-                        }
-                    }
+                .await?
+                .ok_or(Error::DatabaseError)?;
+            let verified = verify(password, &user.password_hash)
+                .expect("Unexpected error: failed to verify password");
+            if verified {
+                if user.mfa_enabled {
+                    let continue_token = ulid::Ulid::new().to_string();
+                    let duration = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .expect("Unexpected error: time went backwards");
+                    let delete_session = PendingDelete {
+                        id: jwt.jwt_content.id,
+                        mfa_secret: user.mfa_secret.unwrap(),
+                        time: duration.as_secs(),
+                    };
+                    PENDING_DELETES.insert(continue_token.clone(), delete_session);
+                    Ok(web::Json(DeleteResponse {
+                        continue_token: Some(continue_token),
+                        success: None,
+                    }))
                 } else {
-                    Err(Error::IncorrectPassword)
+                    let sessions = session::get_collection();
+                    sessions
+                        .delete_many(doc! { "user_id": &jwt.jwt_content.id })
+                        .await?;
+                    collection
+                        .delete_one(
+                            doc! {
+                                "id": &jwt.jwt_content.id
+                            },
+                        )
+                        .await?;
+                    let profile = profile::get_collection()
+                        .find_one(
+                            doc! {
+                                "id": jwt.jwt_content.id,
+                            },
+                        )
+                        .await?
+                        .ok_or(Error::DatabaseError)?;
+                    if let Ok(avatar) = File::get(&profile.avatar).await {
+                        avatar.detach().await?;
+                    }
+                    Ok(web::Json(DeleteResponse {
+                        success: Some(true),
+                        continue_token: None,
+                    }))
                 }
             } else {
-                Err(Error::DatabaseError)
+                Err(Error::IncorrectCredentials)
             }
         } else {
             Err(Error::MissingPassword)
@@ -158,33 +143,24 @@ pub async fn handle(
                         if current_code != c {
                             Err(Error::IncorrectCode)
                         } else {
-                            let blacklist = blacklist::get_collection();
-                            let blacklist_result = blacklist
-                                .insert_one(Blacklist { token: jwt.jwt }, None)
-                                .await;
-                            if blacklist_result.is_ok() {
-                                let collection = user::get_collection();
-                                let result = collection
-                                    .delete_one(
-                                        doc! {
-                                            "id": jwt.jwt_content.id
-                                        },
-                                        None,
-                                    )
-                                    .await;
-                                if result.is_ok() {
-                                    drop(pending_delete);
-                                    PENDING_DELETES.remove(&ct);
-                                    Ok(web::Json(DeleteResponse {
-                                        success: Some(true),
-                                        continue_token: None,
-                                    }))
-                                } else {
-                                    Err(Error::DatabaseError)
-                                }
-                            } else {
-                                Err(Error::DatabaseError)
-                            }
+                            let sessions = session::get_collection();
+                            sessions
+                                .delete_many(doc! { "user_id": &jwt.jwt_content.id },)
+                                .await?;
+                            let collection = user::get_collection();
+                            collection
+                                .delete_one(
+                                    doc! {
+                                        "id": jwt.jwt_content.id
+                                    },
+                                )
+                                .await?;
+                            drop(pending_delete);
+                            PENDING_DELETES.remove(&ct);
+                            Ok(web::Json(DeleteResponse {
+                                success: Some(true),
+                                continue_token: None,
+                            }))
                         }
                     }
                 } else {
