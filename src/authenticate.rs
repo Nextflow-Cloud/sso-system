@@ -71,7 +71,7 @@ pub async fn validate_token(jwt: &String) -> Result<Authenticate> {
     if millis > token_data.claims.expires_at {
         return Err(Error::InvalidToken);
     }
-    let collection = crate::database::blacklist::get_collection();
+    let collection = crate::database::session::get_collection();
     let query = collection
         .find_one(
             doc! {
@@ -79,16 +79,14 @@ pub async fn validate_token(jwt: &String) -> Result<Authenticate> {
             },
             None,
         )
-        .await;
-    if let Ok(q) = query {
-        if q.is_some() {
-            return Err(Error::InvalidToken);
-        }
+        .await?;
+    if query.is_some() {
+        return Ok(Authenticate {
+            jwt: jwt.to_string(),
+            jwt_content: token_data.claims,
+        });
     }
-    Ok(Authenticate {
-        jwt: jwt.to_string(),
-        jwt_content: token_data.claims,
-    })
+    Err(Error::InvalidToken)
 }
 
 pub async fn get_token(req: &ServiceRequest) -> Result<Authenticate> {

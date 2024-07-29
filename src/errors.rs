@@ -99,4 +99,10 @@ impl From<jsonwebtoken::errors::Error> for Error {
     }
 }
 
+impl From<mongodb::error::Error> for Error {
+    fn from(_: mongodb::error::Error) -> Self {
+        Error::DatabaseError
+    }
+}
+
 pub type Result<T> = std::result::Result<T, Error>;

@@ -10,7 +10,7 @@ use totp_rs::{Algorithm, Secret, TOTP};
 
 use crate::{
     authenticate::UserJwt,
-    database::user::User,
+    database::{session::Session, user::User},
     environment::JWT_SECRET,
     errors::{Error, Result},
 };
@@ -24,6 +24,7 @@ pub struct Login {
     password: Option<String>,
     persist: Option<bool>,
     code: Option<String>,
+    friendly_name: Option<String>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -58,76 +59,69 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                             },
                             None,
                         )
-                        .await;
-                    if let Ok(user) = result {
-                        if let Some(user_exists) = user {
-                            // let continue_token = ulid::Ulid::new().to_string();
-                            // let duration = SystemTime::now()
-                            //     .duration_since(UNIX_EPOCH)
-                            //     .expect("Unexpected error: time went backwards");
-                            // let login_session = PendingLogin {
-                            //     email,
-                            //     time: duration.as_secs(),
-                            //     user: user_exists,
-                            // };
-                            // PENDING_LOGINS.insert(continue_token.clone(), login_session);
-                            // Ok(web::Json(LoginResponse {
-                            //     continue_token: Some(continue_token),
-                            //     mfa_enabled: None,
-                            //     token: None,
-                            // }))
-                            let duration = SystemTime::now()
-                                .duration_since(UNIX_EPOCH)
-                                .expect("Unexpected error: time went backwards");
-                            let verified = verify(password, &user_exists.password_hash)
-                                .expect("Unexpected error: failed to verify password");
-                            if verified {
-                                if user_exists.mfa_enabled {
-                                    let continue_token = ulid::Ulid::new().to_string();
-                                    let pending_mfa = PendingMfa {
-                                        time: duration.as_secs(),
-                                        user: user_exists.clone(),
-                                        email: email.clone(),
-                                    };
-                                    PENDING_MFAS.insert(continue_token.clone(), pending_mfa);
-                                    Ok(web::Json(LoginResponse {
-                                        token: None,
-                                        continue_token: Some(continue_token),
-                                        mfa_enabled: Some(true),
-                                    }))
-                                } else {
-                                    let persist = login.persist.unwrap_or(false);
-                                    let millis = duration.as_millis();
-                                    let expires_at = if persist {
-                                        millis + 2592000000
-                                    } else {
-                                        millis + 604800000
-                                    };
-                                    let jwt_object = UserJwt {
-                                        id: user_exists.id.clone(),
-                                        issued_at: millis,
-                                        expires_at,
-                                    };
-                                    let token = encode(
-                                        &Header::default(),
-                                        &jwt_object,
-                                        &EncodingKey::from_secret(JWT_SECRET.as_ref()),
-                                    )
-                                    .expect("Unexpected error: failed to encode token");
-                                    Ok(web::Json(LoginResponse {
-                                        token: Some(token),
-                                        continue_token: None,
-                                        mfa_enabled: Some(false),
-                                    }))
-                                }
+                        .await?;
+                    if let Some(user_exists) = result {
+                        let duration = SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .expect("Unexpected error: time went backwards");
+                        let verified = verify(password, &user_exists.password_hash)
+                        .expect("Unexpected error: failed to verify password");
+                        if verified {
+                            if user_exists.mfa_enabled {
+                                let continue_token = ulid::Ulid::new().to_string();
+                                let pending_mfa = PendingMfa {
+                                    time: duration.as_secs(),
+                                    user: user_exists.clone(),
+                                    email: email.clone(),
+                                };
+                                PENDING_MFAS.insert(continue_token.clone(), pending_mfa);
+                                Ok(web::Json(LoginResponse {
+                                    token: None,
+                                    continue_token: Some(continue_token),
+                                    mfa_enabled: Some(true),
+                                }))
                             } else {
-                                Err(Error::IncorrectCredentials)
+                                let persist = login.persist.unwrap_or(false);
+                                let millis = duration.as_millis();
+                                let expires_at = if persist {
+                                    millis + 2592000000
+                                } else {
+                                    millis + 604800000
+                                };
+                                let jwt_object = UserJwt {
+                                    id: user_exists.id.clone(),
+                                    issued_at: millis,
+                                    expires_at,
+                                };
+                                let token = encode(
+                                    &Header::default(),
+                                    &jwt_object,
+                                    &EncodingKey::from_secret(JWT_SECRET.as_ref()),
+                                )
+                                .expect("Unexpected error: failed to encode token");
+                                let sid = ulid::Ulid::new().to_string();
+                                let session = Session { 
+                                    id: sid, 
+                                    token: token.clone(), 
+                                    friendly_name: login.friendly_name.unwrap_or("Unknown".to_owned()),
+                                    user_id: user_exists.id.clone(), 
+                                };
+                                let sessions = crate::database::session::get_collection();
+                                sessions.insert_one(
+                                    session,
+                                    None,
+                                ).await?;
+                                Ok(web::Json(LoginResponse {
+                                    token: Some(token),
+                                    continue_token: None,
+                                    mfa_enabled: Some(false),
+                                }))
                             }
                         } else {
                             Err(Error::IncorrectCredentials)
                         }
                     } else {
-                        Err(Error::DatabaseError)
+                        Err(Error::IncorrectCredentials)
                     }
                 } else {
                     Err(Error::MissingPassword)
@@ -172,8 +166,9 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                             } else {
                                 millis + 604800000
                             };
+                            let id = mfa_session.user.id.clone();
                             let jwt_object = UserJwt {
-                                id: mfa_session.user.id.clone(),
+                                id: id.clone(),
                                 issued_at: millis,
                                 expires_at,
                             };
@@ -185,6 +180,18 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                             .expect("Unexpected error: failed to encode token");
                             drop(mfa_session);
                             PENDING_MFAS.remove(&continue_token);
+                            let sid = ulid::Ulid::new().to_string();
+                            let session = Session { 
+                                id: sid, 
+                                token: token.clone(), 
+                                friendly_name: login.friendly_name.unwrap_or("Unknown".to_owned()),
+                                user_id: id, 
+                            };
+                            let sessions = crate::database::session::get_collection();
+                            sessions.insert_one(
+                                session,
+                                None,
+                            ).await?;
                             Ok(web::Json(LoginResponse {
                                 token: Some(token),
                                 continue_token: None,
