@@ -31,48 +31,41 @@ pub async fn handle(
     let profile_settings = profile_settings.into_inner();
 
     let collection = get_collection();
-    let existing_profile = collection
+    let profile = collection
         .find_one(doc! {"id": jwt.jwt_content.id.clone()}, None)
-        .await;
-    if let Ok(Some(profile)) = existing_profile {
-        let mut update_query = doc! {};
-        if let Some(display_name) = profile_settings.display_name {
-            if display_name.trim().len() > 64 {
-                return Err(Error::DisplayNameTooLong);
-            }
-            update_query.insert("display_name", display_name.trim());
+        .await?
+        .ok_or(Error::DatabaseError)?;
+    let mut update_query = doc! {};
+    if let Some(display_name) = profile_settings.display_name {
+        if display_name.trim().len() > 64 {
+            return Err(Error::DisplayNameTooLong);
         }
-        if let Some(description) = profile_settings.description {
-            if description.trim().len() > 2048 {
-                return Err(Error::DescriptionTooLong);
-            }
-            update_query.insert("description", description.trim());
-        }
-        if let Some(website) = profile_settings.website {
-            if website.trim().len() > 256 {
-                return Err(Error::WebsiteTooLong);
-            }
-            update_query.insert("website", website.trim());
-        }
-        if let Some(avatar) = profile_settings.avatar {
-            if avatar != "default" {
-                let file = File::get(&avatar).await?;
-                file.attach().await?;
-            }
-            if let Ok(file) = File::get(&profile.id).await {
-                file.detach().await?;
-            }
-            update_query.insert("avatar", avatar);
-        }
-        let result = collection
-            .update_one(doc! {"id": jwt.jwt_content.id}, update_query, None)
-            .await;
-        if result.is_ok() {
-            Ok(web::Json(ProfileSettingsResponse { success: true }))
-        } else {
-            Err(Error::DatabaseError)
-        }
-    } else {
-        Err(Error::DatabaseError)
+        update_query.insert("display_name", display_name.trim());
     }
+    if let Some(description) = profile_settings.description {
+        if description.trim().len() > 2048 {
+            return Err(Error::DescriptionTooLong);
+        }
+        update_query.insert("description", description.trim());
+    }
+    if let Some(website) = profile_settings.website {
+        if website.trim().len() > 256 {
+            return Err(Error::WebsiteTooLong);
+        }
+        update_query.insert("website", website.trim());
+    }
+    if let Some(avatar) = profile_settings.avatar {
+        if avatar != "default" {
+            let file = File::get(&avatar).await?;
+            file.attach().await?;
+        }
+        if let Ok(file) = File::get(&profile.id).await {
+            file.detach().await?;
+        }
+        update_query.insert("avatar", avatar);
+    }
+    collection
+        .update_one(doc! {"id": jwt.jwt_content.id}, update_query, None)
+        .await?;
+    Ok(web::Json(ProfileSettingsResponse { success: true }))
 }

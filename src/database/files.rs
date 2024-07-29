@@ -61,8 +61,7 @@ impl File {
                 },
                 None,
             )
-            .await
-            .map_err(|_| Error::DatabaseError)?
+            .await?
             .ok_or(Error::DatabaseError)
     }
 
@@ -81,8 +80,7 @@ impl File {
                 },
                 None,
             )
-            .await
-            .map_err(|_| Error::DatabaseError)?;
+            .await?;
         Ok(())
     }
 
@@ -101,8 +99,7 @@ impl File {
                 },
                 None,
             )
-            .await
-            .map_err(|_| Error::DatabaseError)?;
+            .await?;
         Ok(())
     }
 }
