@@ -77,7 +77,6 @@ pub async fn validate_token(jwt: &String) -> Result<Authenticate> {
             doc! {
                 "token": jwt
             },
-            None,
         )
         .await?;
     if query.is_some() {
