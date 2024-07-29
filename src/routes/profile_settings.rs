@@ -32,7 +32,7 @@ pub async fn handle(
 
     let collection = get_collection();
     let profile = collection
-        .find_one(doc! {"id": jwt.jwt_content.id.clone()}, None)
+        .find_one(doc! {"id": jwt.jwt_content.id.clone()})
         .await?
         .ok_or(Error::DatabaseError)?;
     let mut update_query = doc! {};
@@ -65,7 +65,7 @@ pub async fn handle(
         update_query.insert("avatar", avatar);
     }
     collection
-        .update_one(doc! {"id": jwt.jwt_content.id}, update_query, None)
+        .update_one(doc! {"id": jwt.jwt_content.id}, update_query)
         .await?;
     Ok(web::Json(ProfileSettingsResponse { success: true }))
 }

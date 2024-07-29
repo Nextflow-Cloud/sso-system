@@ -57,7 +57,6 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                             doc! {
                                 "email": email.clone()
                             },
-                            None,
                         )
                         .await?;
                     if let Some(user_exists) = result {
@@ -109,7 +108,6 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                                 let sessions = crate::database::session::get_collection();
                                 sessions.insert_one(
                                     session,
-                                    None,
                                 ).await?;
                                 Ok(web::Json(LoginResponse {
                                     token: Some(token),
@@ -190,7 +188,6 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                             let sessions = crate::database::session::get_collection();
                             sessions.insert_one(
                                 session,
-                                None,
                             ).await?;
                             Ok(web::Json(LoginResponse {
                                 token: Some(token),

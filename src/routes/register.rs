@@ -73,7 +73,6 @@ pub async fn handle(register: web::Json<Register>) -> Result<impl Responder> {
                         doc! {
                             "email": register.email.clone()
                         },
-                        None,
                     )
                     .await?;
                 if user.is_none() {
@@ -101,9 +100,9 @@ pub async fn handle(register: web::Json<Register>) -> Result<impl Responder> {
                         website: String::new(),
                         avatar: "default".to_string(),
                     };
-                    collection.insert_one(user_document, None).await?;
+                    collection.insert_one(user_document).await?;
                     let profile_collection = crate::database::profile::get_collection();
-                    profile_collection.insert_one(profile_document, None).await?;
+                    profile_collection.insert_one(profile_document).await?;
                     let duration = SystemTime::now()
                         .duration_since(UNIX_EPOCH)
                         .expect("Unexpected error: time went backwards");
@@ -135,7 +134,6 @@ pub async fn handle(register: web::Json<Register>) -> Result<impl Responder> {
                     let sessions = crate::database::session::get_collection();
                     sessions.insert_one(
                         session,
-                        None,
                     ).await?;
                     Ok(web::Json(RegisterResponse { token }))
                 } else {

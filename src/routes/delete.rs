@@ -58,7 +58,6 @@ pub async fn handle(
                     doc! {
                         "id": jwt.jwt_content.id.clone()
                     },
-                    None,
                 )
                 .await?
                 .ok_or(Error::DatabaseError)?;
@@ -83,14 +82,13 @@ pub async fn handle(
                 } else {
                     let sessions = session::get_collection();
                     sessions
-                        .delete_many(doc! { "user_id": &jwt.jwt_content.id }, None)
+                        .delete_many(doc! { "user_id": &jwt.jwt_content.id })
                         .await?;
                     collection
                         .delete_one(
                             doc! {
                                 "id": &jwt.jwt_content.id
                             },
-                            None,
                         )
                         .await?;
                     let profile = profile::get_collection()
@@ -98,7 +96,6 @@ pub async fn handle(
                             doc! {
                                 "id": jwt.jwt_content.id,
                             },
-                            None,
                         )
                         .await?
                         .ok_or(Error::DatabaseError)?;
@@ -148,7 +145,7 @@ pub async fn handle(
                         } else {
                             let sessions = session::get_collection();
                             sessions
-                                .delete_many(doc! { "user_id": &jwt.jwt_content.id }, None)
+                                .delete_many(doc! { "user_id": &jwt.jwt_content.id },)
                                 .await?;
                             let collection = user::get_collection();
                             collection
@@ -156,7 +153,6 @@ pub async fn handle(
                                     doc! {
                                         "id": jwt.jwt_content.id
                                     },
-                                    None,
                                 )
                                 .await?;
                             drop(pending_delete);

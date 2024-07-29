@@ -59,7 +59,7 @@ pub async fn handle(
     if mfa.stage == 1 {
         let collection = get_collection();
         let user = collection
-            .find_one(Some(doc! {"id": jwt.jwt_content.id}), None)
+            .find_one(doc! {"id": jwt.jwt_content.id})
             .await?
             .ok_or(Error::DatabaseError)?;
         if let Some(password) = mfa.password {
@@ -151,7 +151,6 @@ pub async fn handle(
                                         "mfa_secret": enable_session.secret.clone()
                                     }
                                 },
-                                None,
                             )
                             .await?;
                         drop(enable_session);
@@ -205,7 +204,6 @@ pub async fn handle(
                                             "mfa_secret": None::<String>
                                         }
                                     },
-                                    None,
                                 )
                                 .await?;
                             drop(disable_session);

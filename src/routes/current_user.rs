@@ -31,7 +31,6 @@ pub async fn handle(jwt: web::ReqData<Result<Authenticate>>) -> Result<impl Resp
             doc! {
                 "id": jwt.jwt_content.id.clone()
             },
-            None,
         )
         .await?.ok_or(Error::DatabaseError)?;
     let profile_result = profile_collection
@@ -39,7 +38,6 @@ pub async fn handle(jwt: web::ReqData<Result<Authenticate>>) -> Result<impl Resp
             doc! {
                 "id": jwt.jwt_content.id.clone()
             },
-            None,
         )
         .await?.ok_or(Error::DatabaseError)?;
     Ok(web::Json(CurrentUserResponse {

@@ -59,7 +59,6 @@ pub async fn handle(
                 doc! {
                     "id": jwt.jwt_content.id.clone()
                 },
-                None,
             )
             .await?.ok_or(Error::DatabaseError)?;
         if let Some(current_password) = account_settings.current_password.clone() {
@@ -94,7 +93,6 @@ pub async fn handle(
                             doc! {
                                 "username": username.trim()
                             },
-                            None,
                         )
                         .await?;
                     if user.is_some() {
@@ -116,7 +114,6 @@ pub async fn handle(
                             "id": jwt.jwt_content.id.clone()
                         },
                         update_query,
-                        None,
                     )
                     .await?;
                 Ok(web::Json(AccountSettingsResponse {
@@ -167,7 +164,6 @@ pub async fn handle(
                                 doc! {
                                     "username": username.trim()
                                 },
-                                None,
                             )
                             .await?;
                         if user.is_some() {
@@ -189,7 +185,6 @@ pub async fn handle(
                                 "id": jwt.jwt_content.id.clone()
                             },
                             update_query,
-                            None,
                         )
                         .await?;
                     drop(pending_mfa);

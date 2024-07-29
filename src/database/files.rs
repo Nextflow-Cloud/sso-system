@@ -59,7 +59,6 @@ impl File {
                     "deleted": false,
                     "flagged": false
                 },
-                None,
             )
             .await?
             .ok_or(Error::DatabaseError)
@@ -78,7 +77,6 @@ impl File {
                         "attached": true,
                     },
                 },
-                None,
             )
             .await?;
         Ok(())
@@ -97,7 +95,6 @@ impl File {
                         "attached": false,
                     },
                 },
-                None,
             )
             .await?;
         Ok(())

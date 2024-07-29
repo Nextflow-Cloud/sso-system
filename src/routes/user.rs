@@ -34,7 +34,6 @@ pub async fn handle(
             doc! {
                 "id": user_id.clone()
             },
-            None,
         )
         .await?;
     let profile_result = profile_collection
@@ -42,7 +41,6 @@ pub async fn handle(
             doc! {
                 "id": user_id.clone()
             },
-            None,
         )
         .await?;
     if let Some(result) = result {
