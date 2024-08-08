@@ -36,12 +36,12 @@ dependencies = [
 
 [[package]]
 name = "actix-extensible-rate-limit"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c555535e67f5ffe254337f3a8cbb4afdff060899c38aea44bea4277afa988b72"
+checksum = "65f69685bde52e3c1d9ec47aa42ae4eca7f27c04661774423b68b26a06757181"
 dependencies = [
  "actix-web",
- "dashmap 5.5.3",
+ "dashmap",
  "futures",
  "log",
  "thiserror",
@@ -1012,19 +1012,6 @@ dependencies = [
  "darling_core",
  "quote",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "dashmap"
-version = "5.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "978747c1d849a7d2ee5e8adc0159961c48fb7e5db2f06af6723b80123bb53856"
-dependencies = [
- "cfg-if",
- "hashbrown",
- "lock_api",
- "once_cell",
- "parking_lot_core",
 ]
 
 [[package]]
@@ -2702,9 +2689,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.10.5"
+version = "1.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b91213439dad192326a0d7c6ee3955910425f441d7038e0d6933b0aec5c4517f"
+checksum = "4219d74c6b67a3654a9fbebc4b419e22126d13d2f3c4a07ee0cb61ff79a79619"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -3072,9 +3059,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.121"
+version = "1.0.122"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ab380d7d9f22ef3f21ad3e6c1ebe8e4fc7a2000ccba2e4d71fc96f15b2cb609"
+checksum = "784b6203951c57ff748476b126ccb5e8e2959a5c19e5c617ab1956be3dbc68da"
 dependencies = [
  "indexmap",
  "itoa",
@@ -3259,7 +3246,7 @@ dependencies = [
  "aes-gcm",
  "async-std",
  "bcrypt",
- "dashmap 6.0.1",
+ "dashmap",
  "env_logger",
  "futures-util",
  "jsonwebtoken",
