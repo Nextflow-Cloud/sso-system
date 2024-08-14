@@ -73,6 +73,7 @@ async fn main() {
                     .route("/user", web::get().to(routes::current_user::handle))
                     .route("/user", web::delete().to(routes::delete::handle))
                     .route("/ip", web::get().to(routes::ip::handle))
+                    .route("/session", web::get().to(routes::session::handle))
                     .route(
                         "/session",
                         web::post()
@@ -80,6 +81,8 @@ async fn main() {
                             .wrap(create_success_rate_limiter(Duration::from_secs(20), 5)),
                     )
                     .route("/session", web::delete().to(routes::logout::handle))
+                    .route("/session/:id", web::delete().to(routes::logout_other::handle))
+                    .route("/session/all", web::delete().to(routes::logout_all::handle))
                     .route("/user/mfa", web::patch().to(routes::mfa::handle))
                     .route(
                         "/user/profile",

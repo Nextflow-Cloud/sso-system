@@ -10,3 +10,6 @@ pub mod register;
 pub mod service;
 pub mod user;
 pub mod validate;
+pub mod session;
+pub mod logout_other;
+pub mod logout_all;
