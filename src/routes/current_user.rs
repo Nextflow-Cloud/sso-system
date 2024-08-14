@@ -27,19 +27,17 @@ pub async fn handle(jwt: web::ReqData<Result<Authenticate>>) -> Result<impl Resp
     let collection = user::get_collection();
     let profile_collection = profile::get_collection();
     let result = collection
-        .find_one(
-            doc! {
-                "id": jwt.jwt_content.id.clone()
-            },
-        )
-        .await?.ok_or(Error::DatabaseError)?;
+        .find_one(doc! {
+            "id": jwt.jwt_content.id.clone()
+        })
+        .await?
+        .ok_or(Error::DatabaseError)?;
     let profile_result = profile_collection
-        .find_one(
-            doc! {
-                "id": jwt.jwt_content.id.clone()
-            },
-        )
-        .await?.ok_or(Error::DatabaseError)?;
+        .find_one(doc! {
+            "id": jwt.jwt_content.id.clone()
+        })
+        .await?
+        .ok_or(Error::DatabaseError)?;
     Ok(web::Json(CurrentUserResponse {
         avatar: profile_result.avatar,
         description: profile_result.description,

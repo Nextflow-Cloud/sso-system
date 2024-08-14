@@ -71,15 +71,13 @@ pub async fn handle(register: web::Json<Register>) -> Result<impl Responder> {
     if !EMAIL_RE.is_match(register.email.trim()) {
         return Err(Error::InvalidEmail);
     }
-    let password_hash = hash(register.password, DEFAULT_COST)
-        .expect("Unexpected error: failed to hash");
+    let password_hash =
+        hash(register.password, DEFAULT_COST).expect("Unexpected error: failed to hash");
     let collection = crate::database::user::get_collection();
     let user = collection
-        .find_one(
-            doc! {
-                "email": register.email.clone()
-            },
-        )
+        .find_one(doc! {
+            "email": register.email.clone()
+        })
         .await?;
     if user.is_some() {
         return Err(Error::UserExists);
@@ -133,15 +131,13 @@ pub async fn handle(register: web::Json<Register>) -> Result<impl Responder> {
     )
     .expect("Unexpected error: failed to encode token");
     let sid = ulid::Ulid::new().to_string();
-    let session = Session { 
-        id: sid, 
-        token: token.clone(), 
+    let session = Session {
+        id: sid,
+        token: token.clone(),
         friendly_name: register.friendly_name.unwrap_or("Unknown".to_owned()),
         user_id,
     };
     let sessions = crate::database::session::get_collection();
-    sessions.insert_one(
-        session,
-    ).await?;
+    sessions.insert_one(session).await?;
     Ok(web::Json(RegisterResponse { token }))
 }

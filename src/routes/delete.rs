@@ -10,11 +10,7 @@ use totp_rs::{Secret, TOTP};
 
 use crate::{
     authenticate::Authenticate,
-    database::{
-        session,
-        files::File,
-        profile, user,
-    },
+    database::{files::File, profile, session, user},
     errors::{Error, Result},
 };
 
@@ -56,11 +52,9 @@ pub async fn handle(
         };
         let collection = user::get_collection();
         let user = collection
-            .find_one(
-                doc! {
-                    "id": jwt.jwt_content.id.clone()
-                },
-            )
+            .find_one(doc! {
+                "id": jwt.jwt_content.id.clone()
+            })
             .await?
             .ok_or(Error::DatabaseError)?;
         let verified = verify(password, &user.password_hash)
@@ -89,18 +83,14 @@ pub async fn handle(
                 .delete_many(doc! { "user_id": &jwt.jwt_content.id })
                 .await?;
             collection
-                .delete_one(
-                    doc! {
-                        "id": &jwt.jwt_content.id
-                    },
-                )
+                .delete_one(doc! {
+                    "id": &jwt.jwt_content.id
+                })
                 .await?;
             let profile = profile::get_collection()
-                .find_one(
-                    doc! {
-                        "id": jwt.jwt_content.id,
-                    },
-                )
+                .find_one(doc! {
+                    "id": jwt.jwt_content.id,
+                })
                 .await?
                 .ok_or(Error::DatabaseError)?;
             if let Ok(avatar) = File::get(&profile.avatar).await {
@@ -129,7 +119,7 @@ pub async fn handle(
             drop(pending_delete);
             PENDING_DELETES.remove(&ct);
             return Err(Error::SessionExpired);
-        } 
+        }
         let secret = Secret::Encoded(pending_delete.mfa_secret.clone());
         let totp = TOTP::new(
             totp_rs::Algorithm::SHA256,
@@ -146,18 +136,16 @@ pub async fn handle(
             .expect("Unexpected error: failed to generate code");
         if current_code != c {
             return Err(Error::IncorrectCode);
-        } 
+        }
         let sessions = session::get_collection();
         sessions
-            .delete_many(doc! { "user_id": &jwt.jwt_content.id },)
+            .delete_many(doc! { "user_id": &jwt.jwt_content.id })
             .await?;
         let collection = user::get_collection();
         collection
-            .delete_one(
-                doc! {
-                    "id": jwt.jwt_content.id
-                },
-            )
+            .delete_one(doc! {
+                "id": jwt.jwt_content.id
+            })
             .await?;
         drop(pending_delete);
         PENDING_DELETES.remove(&ct);

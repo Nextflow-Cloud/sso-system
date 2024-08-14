@@ -73,11 +73,9 @@ pub async fn validate_token(jwt: &String) -> Result<Authenticate> {
     }
     let collection = crate::database::session::get_collection();
     let query = collection
-        .find_one(
-            doc! {
-                "token": jwt
-            },
-        )
+        .find_one(doc! {
+            "token": jwt
+        })
         .await?;
     if query.is_some() {
         return Ok(Authenticate {

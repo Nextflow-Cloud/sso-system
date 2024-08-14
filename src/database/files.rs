@@ -53,13 +53,11 @@ pub fn get_collection() -> Collection<File> {
 impl File {
     pub async fn get(id: &String) -> Result<File> {
         get_collection()
-            .find_one(
-                doc! {
-                    "id": id,
-                    "deleted": false,
-                    "flagged": false
-                },
-            )
+            .find_one(doc! {
+                "id": id,
+                "deleted": false,
+                "flagged": false
+            })
             .await?
             .ok_or(Error::DatabaseError)
     }

@@ -180,9 +180,7 @@ pub async fn handle(
                 PENDING_MFA_DISABLES.remove(&continue_token);
                 return Err(Error::SessionExpired);
             }
-            let secret = Secret::Encoded(
-                disable_session.user.mfa_secret.as_ref().unwrap().clone(),
-            );
+            let secret = Secret::Encoded(disable_session.user.mfa_secret.as_ref().unwrap().clone());
             let totp = TOTP::new(
                 totp_rs::Algorithm::SHA256,
                 8,

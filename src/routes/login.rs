@@ -57,11 +57,9 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                 return Err(Error::MissingPassword);
             };
             let result = collection
-                .find_one(
-                    doc! {
-                        "email": email.clone()
-                    },
-                )
+                .find_one(doc! {
+                    "email": email.clone()
+                })
                 .await?;
             let Some(user_exists) = result else {
                 return Err(Error::IncorrectCredentials);
@@ -70,7 +68,7 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                 .duration_since(UNIX_EPOCH)
                 .expect("Unexpected error: time went backwards");
             let verified = verify(password, &user_exists.password_hash)
-            .expect("Unexpected error: failed to verify password");
+                .expect("Unexpected error: failed to verify password");
             if !verified {
                 return Err(Error::IncorrectCredentials);
             }
@@ -107,16 +105,14 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                 )
                 .expect("Unexpected error: failed to encode token");
                 let sid = ulid::Ulid::new().to_string();
-                let session = Session { 
-                    id: sid, 
-                    token: token.clone(), 
+                let session = Session {
+                    id: sid,
+                    token: token.clone(),
                     friendly_name: login.friendly_name.unwrap_or("Unknown".to_owned()),
-                    user_id: user_exists.id.clone(), 
+                    user_id: user_exists.id.clone(),
                 };
                 let sessions = crate::database::session::get_collection();
-                sessions.insert_one(
-                    session,
-                ).await?;
+                sessions.insert_one(session).await?;
                 Ok(web::Json(LoginResponse {
                     token: Some(token),
                     continue_token: None,
@@ -182,16 +178,14 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
             drop(mfa_session);
             PENDING_MFAS.remove(&continue_token);
             let sid = ulid::Ulid::new().to_string();
-            let session = Session { 
-                id: sid, 
-                token: token.clone(), 
+            let session = Session {
+                id: sid,
+                token: token.clone(),
                 friendly_name: login.friendly_name.unwrap_or("Unknown".to_owned()),
-                user_id: id, 
+                user_id: id,
             };
             let sessions = crate::database::session::get_collection();
-            sessions.insert_one(
-                session,
-            ).await?;
+            sessions.insert_one(session).await?;
             Ok(web::Json(LoginResponse {
                 token: Some(token),
                 continue_token: None,

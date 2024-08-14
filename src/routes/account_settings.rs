@@ -55,12 +55,11 @@ pub async fn handle(
     if account_settings.stage == 1 {
         let user_collection = get_collection();
         let user = user_collection
-            .find_one(
-                doc! {
-                    "id": jwt.jwt_content.id.clone()
-                },
-            )
-            .await?.ok_or(Error::DatabaseError)?;
+            .find_one(doc! {
+                "id": jwt.jwt_content.id.clone()
+            })
+            .await?
+            .ok_or(Error::DatabaseError)?;
         let Some(current_password) = account_settings.current_password.clone() else {
             return Err(Error::MissingPassword);
         };
@@ -93,11 +92,9 @@ pub async fn handle(
                 return Err(Error::InvalidUsername);
             }
             let user = user_collection
-                .find_one(
-                    doc! {
-                        "username": username.trim()
-                    },
-                )
+                .find_one(doc! {
+                    "username": username.trim()
+                })
                 .await?;
             if user.is_some() {
                 return Err(Error::UsernameAlreadyTaken);
@@ -124,7 +121,6 @@ pub async fn handle(
             success: Some(true),
             continue_token: None,
         }))
-        
     } else if account_settings.stage == 2 {
         let Some(continue_token) = account_settings.continue_token else {
             return Err(Error::MissingContinueToken);
@@ -166,11 +162,9 @@ pub async fn handle(
                 return Err(Error::InvalidUsername);
             }
             let user = get_collection()
-                .find_one(
-                    doc! {
-                        "username": username.trim()
-                    },
-                )
+                .find_one(doc! {
+                    "username": username.trim()
+                })
                 .await?;
             if user.is_some() {
                 return Err(Error::UsernameAlreadyTaken); // FIXME: ??? what was I thinking here? nvm

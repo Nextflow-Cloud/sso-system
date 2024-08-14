@@ -1,6 +1,6 @@
-pub mod session;
 pub mod files;
 pub mod profile;
+pub mod session;
 pub mod user;
 
 use log::info;

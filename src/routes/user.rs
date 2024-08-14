@@ -30,18 +30,14 @@ pub async fn handle(
     let collection = user::get_collection();
     let profile_collection = profile::get_collection();
     let result = collection
-        .find_one(
-            doc! {
-                "id": user_id.clone()
-            },
-        )
+        .find_one(doc! {
+            "id": user_id.clone()
+        })
         .await?;
     let profile_result = profile_collection
-        .find_one(
-            doc! {
-                "id": user_id.clone()
-            },
-        )
+        .find_one(doc! {
+            "id": user_id.clone()
+        })
         .await?;
     let Some(result) = result else {
         return Err(Error::UserNotFound);
