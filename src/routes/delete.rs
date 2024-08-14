@@ -136,16 +136,20 @@ pub async fn handle(
             .expect("Unexpected error: failed to generate code");
         if current_code != c {
             let codes = database::code::get_collection();
-            let code = codes.find_one(doc!{
-                "code": c,
-                "user_id": &pending_delete.id
-            }).await?;
+            let code = codes
+                .find_one(doc! {
+                    "code": c,
+                    "user_id": &pending_delete.id
+                })
+                .await?;
             let Some(code) = code else {
                 return Err(Error::IncorrectCode);
             };
-            codes.delete_one(doc!{
-                "code": code.code
-            }).await?;
+            codes
+                .delete_one(doc! {
+                    "code": code.code
+                })
+                .await?;
         }
         let sessions = session::get_collection();
         sessions

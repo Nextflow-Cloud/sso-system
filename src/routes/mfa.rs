@@ -10,7 +10,10 @@ use totp_rs::{Secret, TOTP};
 
 use crate::{
     authenticate::Authenticate,
-    database::{code, user::{self, User}},
+    database::{
+        code,
+        user::{self, User},
+    },
     errors::{Error, Result},
     utilities::{generate_codes, random_number},
 };
@@ -31,7 +34,7 @@ pub struct MfaResponse {
     success: Option<bool>,
     qr: Option<String>,
     secret: Option<String>,
-    codes: Option<Vec<String>>
+    codes: Option<Vec<String>>,
 }
 
 pub struct PendingMfaEnable {
@@ -84,7 +87,7 @@ pub async fn handle(
                     success: None,
                     qr: None,
                     secret: None,
-                    codes: None
+                    codes: None,
                 }))
             } else {
                 let secret = random_number(160);
@@ -119,7 +122,7 @@ pub async fn handle(
                     qr: Some(qr),
                     secret: Some(code),
                     success: None,
-                    codes: Some(codes)
+                    codes: Some(codes),
                 }))
             }
         } else {
@@ -170,7 +173,7 @@ pub async fn handle(
                 qr: None,
                 secret: None,
                 success: Some(true),
-                codes: None
+                codes: None,
             }))
         } else {
             let disable_session = PENDING_MFA_DISABLES.get(&continue_token);
@@ -201,16 +204,20 @@ pub async fn handle(
                 .expect("Unexpected error: failed to generate code");
             if current != code {
                 let codes = code::get_collection();
-                let code = codes.find_one(doc!{
-                    "code": code,
-                    "user_id": &disable_session.user.id
-                }).await?;
+                let code = codes
+                    .find_one(doc! {
+                        "code": code,
+                        "user_id": &disable_session.user.id
+                    })
+                    .await?;
                 let Some(code) = code else {
                     return Err(Error::IncorrectCode);
                 };
-                codes.delete_one(doc!{
-                    "code": code.code
-                }).await?;
+                codes
+                    .delete_one(doc! {
+                        "code": code.code
+                    })
+                    .await?;
             }
             let collection = user::get_collection();
             collection
@@ -226,9 +233,11 @@ pub async fn handle(
                     },
                 )
                 .await?;
-            code::get_collection().delete_many(doc! {
-                "user_id": disable_session.user.id.clone()
-            }).await?;
+            code::get_collection()
+                .delete_many(doc! {
+                    "user_id": disable_session.user.id.clone()
+                })
+                .await?;
             drop(disable_session);
             PENDING_MFA_DISABLES.remove(&continue_token);
             Ok(web::Json(MfaResponse {
@@ -236,7 +245,7 @@ pub async fn handle(
                 qr: None,
                 secret: None,
                 success: Some(true),
-                codes: None
+                codes: None,
             }))
         }
     } else {

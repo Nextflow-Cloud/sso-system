@@ -1,7 +1,4 @@
-use actix_web::{
-    web,
-    Responder,
-};
+use actix_web::{web, Responder};
 use mongodb::bson::doc;
 use serde::{Deserialize, Serialize};
 
@@ -19,6 +16,8 @@ pub async fn handle(
 ) -> Result<impl Responder> {
     jwt.into_inner()?;
     let sessions = get_collection();
-    sessions.delete_one(doc! { "id": &logout_other.into_inner() }).await?;
+    sessions
+        .delete_one(doc! { "id": &logout_other.into_inner() })
+        .await?;
     Ok(web::Json(LogoutOtherResponse { success: true }))
 }

@@ -155,16 +155,20 @@ pub async fn handle(login: web::Json<Login>) -> Result<impl Responder> {
                 .expect("Unexpected error: failed to generate code");
             if current_code != code {
                 let codes = database::code::get_collection();
-                let code = codes.find_one(doc!{
-                    "code": code,
-                    "user_id": &mfa_session.user.id
-                }).await?;
+                let code = codes
+                    .find_one(doc! {
+                        "code": code,
+                        "user_id": &mfa_session.user.id
+                    })
+                    .await?;
                 let Some(code) = code else {
                     return Err(Error::IncorrectCode);
                 };
-                codes.delete_one(doc!{
-                    "code": code.code
-                }).await?;
+                codes
+                    .delete_one(doc! {
+                        "code": code.code
+                    })
+                    .await?;
             }
             let persist = login.persist.unwrap_or(false);
             let millis = duration.as_millis();

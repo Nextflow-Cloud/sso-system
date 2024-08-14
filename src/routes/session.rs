@@ -14,9 +14,7 @@ pub struct ClientSession {
     friendly_name: String,
 }
 
-pub async fn handle(
-    jwt: web::ReqData<Result<Authenticate>>,
-) -> Result<impl Responder> {
+pub async fn handle(jwt: web::ReqData<Result<Authenticate>>) -> Result<impl Responder> {
     let jwt = jwt.into_inner()?;
     let sessions = session::get_collection();
     let result = sessions

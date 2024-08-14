@@ -10,7 +10,10 @@ use totp_rs::{Algorithm, Secret, TOTP};
 
 use crate::{
     authenticate::Authenticate,
-    database::{self, user::{get_collection, User}},
+    database::{
+        self,
+        user::{get_collection, User},
+    },
     errors::{Error, Result},
     utilities::USERNAME_RE,
 };
@@ -155,16 +158,20 @@ pub async fn handle(
             .expect("Unexpected error: failed to generate code");
         if current_code != code {
             let codes = database::code::get_collection();
-            let code = codes.find_one(doc!{
-                "code": code,
-                "user_id": &pending_mfa.user.id
-            }).await?;
+            let code = codes
+                .find_one(doc! {
+                    "code": code,
+                    "user_id": &pending_mfa.user.id
+                })
+                .await?;
             let Some(code) = code else {
                 return Err(Error::IncorrectCode);
             };
-            codes.delete_one(doc!{
-                "code": code.code
-            }).await?;
+            codes
+                .delete_one(doc! {
+                    "code": code.code
+                })
+                .await?;
         }
         let mut update_query = doc! {};
         if let Some(username) = pending_mfa.previous_request.username.clone() {
