@@ -49,6 +49,17 @@ pub fn random_number(size: usize) -> Vec<u8> {
     result
 }
 
+// generates 10 random 8 digit codes
+pub fn generate_codes() -> Vec<String> {
+    let mut codes = Vec::new();
+    let mut rng = rand::thread_rng();
+    for _ in 0..10 {
+        let random_number = rng.gen_range(0..100_000_000);
+        codes.push(format!("{:08}", random_number));
+    }
+    codes
+}
+
 pub fn create_rate_limiter(
     interval: Duration,
     max_requests: u64,

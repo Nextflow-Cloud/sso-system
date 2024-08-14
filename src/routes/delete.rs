@@ -10,7 +10,7 @@ use totp_rs::{Secret, TOTP};
 
 use crate::{
     authenticate::Authenticate,
-    database::{files::File, profile, session, user},
+    database::{self, files::File, profile, session, user},
     errors::{Error, Result},
 };
 
@@ -135,7 +135,17 @@ pub async fn handle(
             .generate_current()
             .expect("Unexpected error: failed to generate code");
         if current_code != c {
-            return Err(Error::IncorrectCode);
+            let codes = database::code::get_collection();
+            let code = codes.find_one(doc!{
+                "code": c,
+                "user_id": &pending_delete.id
+            }).await?;
+            let Some(code) = code else {
+                return Err(Error::IncorrectCode);
+            };
+            codes.delete_one(doc!{
+                "code": code.code
+            }).await?;
         }
         let sessions = session::get_collection();
         sessions
