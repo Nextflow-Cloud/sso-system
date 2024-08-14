@@ -53,99 +53,95 @@ pub async fn handle(register: web::Json<Register>) -> Result<impl Responder> {
         ])
         .send()
         .await;
-    if let Ok(result) = result {
-        if result.status() == reqwest::StatusCode::OK {
-            let text = result
-                .text()
-                .await
-                .expect("Unexpected error: failed to read response");
-            let response: HCaptchaResponse = serde_json::from_str(&text)
-                .expect("Unexpected error: failed to convert response into JSON");
-            if response.success {
-                if !EMAIL_RE.is_match(register.email.trim()) {
-                    return Err(Error::InvalidEmail);
-                }
-                let password_hash = hash(register.password, DEFAULT_COST)
-                    .expect("Unexpected error: failed to hash");
-                let collection = crate::database::user::get_collection();
-                let user = collection
-                    .find_one(
-                        doc! {
-                            "email": register.email.clone()
-                        },
-                    )
-                    .await?;
-                if user.is_none() {
-                    if register.display_name.trim().len() > 64 {
-                        return Err(Error::DisplayNameTooLong);
-                    }
-                    if !USERNAME_RE.is_match(register.username.trim()) {
-                        return Err(Error::InvalidUsername);
-                    }
-                    let user_id = ulid::Ulid::new().to_string();
-                    let user_document = User {
-                        id: user_id.clone(),
-                        mfa_enabled: false,
-                        mfa_secret: None,
-                        username: register.username,
-                        email: register.email.trim().to_string(),
-                        password_hash: password_hash.to_string(),
-                        public_email: false,
-                        platform_administrator: false,
-                    };
-                    let profile_document = UserProfile {
-                        id: user_id.clone(),
-                        display_name: register.display_name.trim().to_string(),
-                        description: String::new(),
-                        website: String::new(),
-                        avatar: "default".to_string(),
-                    };
-                    collection.insert_one(user_document).await?;
-                    let profile_collection = crate::database::profile::get_collection();
-                    profile_collection.insert_one(profile_document).await?;
-                    let duration = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect("Unexpected error: time went backwards");
-                    let persist = register.persist.unwrap_or(false);
-                    let millis = duration.as_millis();
-                    let expires_at = if persist {
-                        millis + 2592000000
-                    } else {
-                        millis + 604800000
-                    };
-                    let jwt_object = UserJwt {
-                        id: user_id.clone(),
-                        issued_at: millis,
-                        expires_at,
-                    };
-                    let token = encode(
-                        &Header::default(),
-                        &jwt_object,
-                        &EncodingKey::from_secret(JWT_SECRET.as_ref()),
-                    )
-                    .expect("Unexpected error: failed to encode token");
-                    let sid = ulid::Ulid::new().to_string();
-                    let session = Session { 
-                        id: sid, 
-                        token: token.clone(), 
-                        friendly_name: register.friendly_name.unwrap_or("Unknown".to_owned()),
-                        user_id,
-                    };
-                    let sessions = crate::database::session::get_collection();
-                    sessions.insert_one(
-                        session,
-                    ).await?;
-                    Ok(web::Json(RegisterResponse { token }))
-                } else {
-                    Err(Error::UserExists)
-                }
-            } else {
-                Err(Error::InvalidCaptcha)
-            }
-        } else {
-            Err(Error::InternalCaptchaError)
-        }
-    } else {
-        Err(Error::InternalCaptchaError)
+    let Ok(result) = result else {
+        return Err(Error::InternalCaptchaError);
+    };
+    if result.status() != reqwest::StatusCode::OK {
+        return Err(Error::InternalCaptchaError);
     }
+    let text = result
+        .text()
+        .await
+        .expect("Unexpected error: failed to read response");
+    let response: HCaptchaResponse = serde_json::from_str(&text)
+        .expect("Unexpected error: failed to convert response into JSON");
+    if !response.success {
+        return Err(Error::InvalidCaptcha);
+    }
+    if !EMAIL_RE.is_match(register.email.trim()) {
+        return Err(Error::InvalidEmail);
+    }
+    let password_hash = hash(register.password, DEFAULT_COST)
+        .expect("Unexpected error: failed to hash");
+    let collection = crate::database::user::get_collection();
+    let user = collection
+        .find_one(
+            doc! {
+                "email": register.email.clone()
+            },
+        )
+        .await?;
+    if user.is_some() {
+        return Err(Error::UserExists);
+    }
+    if register.display_name.trim().len() > 64 {
+        return Err(Error::DisplayNameTooLong);
+    }
+    if !USERNAME_RE.is_match(register.username.trim()) {
+        return Err(Error::InvalidUsername);
+    }
+    let user_id = ulid::Ulid::new().to_string();
+    let user_document = User {
+        id: user_id.clone(),
+        mfa_enabled: false,
+        mfa_secret: None,
+        username: register.username,
+        email: register.email.trim().to_string(),
+        password_hash: password_hash.to_string(),
+        public_email: false,
+        platform_administrator: false,
+    };
+    let profile_document = UserProfile {
+        id: user_id.clone(),
+        display_name: register.display_name.trim().to_string(),
+        description: String::new(),
+        website: String::new(),
+        avatar: "default".to_string(),
+    };
+    collection.insert_one(user_document).await?;
+    let profile_collection = crate::database::profile::get_collection();
+    profile_collection.insert_one(profile_document).await?;
+    let duration = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Unexpected error: time went backwards");
+    let persist = register.persist.unwrap_or(false);
+    let millis = duration.as_millis();
+    let expires_at = if persist {
+        millis + 2592000000
+    } else {
+        millis + 604800000
+    };
+    let jwt_object = UserJwt {
+        id: user_id.clone(),
+        issued_at: millis,
+        expires_at,
+    };
+    let token = encode(
+        &Header::default(),
+        &jwt_object,
+        &EncodingKey::from_secret(JWT_SECRET.as_ref()),
+    )
+    .expect("Unexpected error: failed to encode token");
+    let sid = ulid::Ulid::new().to_string();
+    let session = Session { 
+        id: sid, 
+        token: token.clone(), 
+        friendly_name: register.friendly_name.unwrap_or("Unknown".to_owned()),
+        user_id,
+    };
+    let sessions = crate::database::session::get_collection();
+    sessions.insert_one(
+        session,
+    ).await?;
+    Ok(web::Json(RegisterResponse { token }))
 }

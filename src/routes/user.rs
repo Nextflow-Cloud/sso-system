@@ -43,22 +43,20 @@ pub async fn handle(
             },
         )
         .await?;
-    if let Some(result) = result {
-        if let Some(profile_result) = profile_result {
-            Ok(web::Json(UserResponse {
-                avatar: profile_result.avatar,
-                description: profile_result.description,
-                display_name: profile_result.display_name,
-                id: user_id.to_string(),
-                mfa_enabled: result.mfa_enabled,
-                public_email: result.public_email,
-                username: result.username,
-                website: profile_result.website,
-            }))
-        } else {
-            Err(Error::UserNotFound)
-        }
-    } else {
-        Err(Error::UserNotFound)
-    }
+    let Some(result) = result else {
+        return Err(Error::UserNotFound);
+    };
+    let Some(profile_result) = profile_result else {
+        return Err(Error::UserNotFound);
+    };
+    Ok(web::Json(UserResponse {
+        avatar: profile_result.avatar,
+        description: profile_result.description,
+        display_name: profile_result.display_name,
+        id: user_id.to_string(),
+        mfa_enabled: result.mfa_enabled,
+        public_email: result.public_email,
+        username: result.username,
+        website: profile_result.website,
+    }))
 }
