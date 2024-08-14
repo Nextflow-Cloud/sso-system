@@ -82,7 +82,7 @@ async fn main() {
                     )
                     .route("/session", web::delete().to(routes::logout::handle))
                     .route(
-                        "/session/:id",
+                        "/session/{id}",
                         web::delete().to(routes::logout_other::handle),
                     )
                     .route("/session/all", web::delete().to(routes::logout_all::handle))

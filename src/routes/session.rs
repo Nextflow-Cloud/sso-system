@@ -15,21 +15,20 @@ pub struct ClientSession {
 }
 
 pub async fn handle(
-    user_id: web::Path<String>,
     jwt: web::ReqData<Result<Authenticate>>,
 ) -> Result<impl Responder> {
-    jwt.into_inner()?;
+    let jwt = jwt.into_inner()?;
     let sessions = session::get_collection();
     let result = sessions
         .find(doc! {
-            "user_id": user_id.clone()
+            "user_id": &jwt.jwt_content.id
         })
         .await?
         .collect::<Vec<std::result::Result<Session, _>>>()
         .await
         .into_iter()
         .collect::<std::result::Result<Vec<Session>, _>>()?;
-    
+
     let result = result
         .into_iter()
         .map(|session| ClientSession {
