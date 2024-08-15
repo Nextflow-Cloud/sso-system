@@ -89,13 +89,18 @@ pub async fn handle(
                 .await?;
             let profile = profile::get_collection()
                 .find_one(doc! {
-                    "id": jwt.jwt_content.id,
+                    "id": &jwt.jwt_content.id,
                 })
                 .await?
                 .ok_or(Error::DatabaseError)?;
             if let Ok(avatar) = File::get(&profile.avatar).await {
                 avatar.detach().await?;
             }
+            profile::get_collection()
+                .delete_one(doc! {
+                    "id": jwt.jwt_content.id
+                })
+                .await?;
             Ok(web::Json(DeleteResponse {
                 success: Some(true),
                 continue_token: None,
