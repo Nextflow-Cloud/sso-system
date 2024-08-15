@@ -117,7 +117,9 @@ pub async fn handle(
                 doc! {
                     "id": jwt.jwt_content.id.clone()
                 },
-                update_query,
+                doc! {
+                    "$set": update_query
+                },
             )
             .await?;
         Ok(web::Json(AccountSettingsResponse {
@@ -201,7 +203,9 @@ pub async fn handle(
                 doc! {
                     "id": jwt.jwt_content.id.clone()
                 },
-                update_query,
+                doc! {
+                    "$set": update_query
+                },
             )
             .await?;
         drop(pending_mfa);

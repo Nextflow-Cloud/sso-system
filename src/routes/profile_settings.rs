@@ -65,7 +65,12 @@ pub async fn handle(
         update_query.insert("avatar", avatar);
     }
     collection
-        .update_one(doc! {"id": jwt.jwt_content.id}, update_query)
+        .update_one(
+            doc! {"id": jwt.jwt_content.id},
+            doc! {
+                "$set": update_query
+            },
+        )
         .await?;
     Ok(web::Json(ProfileSettingsResponse { success: true }))
 }
