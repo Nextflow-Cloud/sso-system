@@ -1,16 +1,16 @@
-# Nextflow SSO authentication system
+<h1 align="center">Nextflow SSO authentication system</h1>
+<div align="center">
+  
+[![License](https://img.shields.io/github/license/Nextflow-Cloud/sso-system)](https://github.com/Nextflow-Cloud/sso-system/blob/main/LICENSE)
+
+</div>
 
 ## About
-Introducing the all-new server, which has been rewritten from the ground up for a strongly typed and fast system.
+The Nextflow SSO authentication system allows you to log in to all Nextflow services with a single account. It aims to be modern and fast for users to log in and manage their account. The system is built with technologies such as Rust and MongoDB.
 
-The Nextflow SSO authentication system allows you to log in to all Nextflow services with a single account.
-* Flexible and versatile
-* Clean and fluid interface
-* Fast
+This server is built with security in mind and supports TOTP two-factor authentication. In the future, we also aim to support OPAQUE, an asymmetric password authenticated key exchange protocol, as well as WebAuthn, allowing the use of passkeys and physical security keys. 
 
-The entire Nextflow SSO authentication system is currently being overhauled. The server-side work has mostly been completed.
-
-This is the Rust-based backend. For the Preact-based frontend, please check out [sso-system-client](https://github.com/Nextflow-Cloud/sso-system-client). We are considering using Solid as our client-side library.
+This is the Rust-based backend. For the SolidJS-based frontend, please check out [sso-system-client](https://github.com/Nextflow-Cloud/sso-system-client).
 
 ## Hosting the server
 
@@ -18,9 +18,7 @@ This is the Rust-based backend. For the Preact-based frontend, please check out 
 This service uses MongoDB as a database, so you will need a MongoDB cluster or self-hosted MongoDB server. More information can be found on [their website](https://mongodb.com/).
 
 ### Run with Docker
-If you need an included database server, use Docker. Docker is highly recommended to contain Obviously, you will also need to install Docker. It can be installed on most Linux distributions using a convenience script or package manager. Please check [their website](https://docs.docker.com/engine/install/) for more detailed documentation on how to install Docker and configuration.
-
-You will need to have the Docker Compose plugin installed along with Docker itself.
+Running with Docker is the recommended method for hosting this service. It allows you to easily configure and automatically start the service in a container. If you need an included database server, use Docker. Please check [their website](https://docs.docker.com/engine/install/) for more detailed documentation on how to install Docker and configuration. You will need to have the Docker Compose plugin installed along with Docker itself.
 
 Copy `docker-compose.example.yml` into your own `docker-compose.yml` and modify it as needed. If you have an existing MongoDB instance, you may remove the `sso-system-mongodb` entry and point the `MONGODB_URI` and `MONGODB_DATABASE` variables to your own instance. Otherwise, keep the entry to use the included database server.
 
@@ -29,7 +27,7 @@ Populate the other environment variables as necessary. Currently, all variables 
 To start the container, run `docker compose up -d` (with sudo as necessary).
 
 ### Run without Docker 
-Although Docker is the preferred method of running the server, you can do so without Docker as well. You will need to run your own MongoDB instance or obtain a cluster. 
+Although Docker is the preferred method of running the server, you can do so without Docker as well. You will need to run a MongoDB instance separately or obtain a cluster. 
 
 Before running, you should populate the environment variables with the following:
 * `MONGODB_URI`: URI pointing to the MongoDB instance or cluster.
@@ -46,7 +44,3 @@ After doing so, run `cargo run --release` to build and run the server. It may ta
 
 ## Contribute
 Nextflow Cloud Technologies is committed to open-source software and free use. This means that you are free to view, modify, contribute, and support the project. Making a pull request with something useful is highly encouraged as this project is made possible by contributors like you who support the project.
-
-* ~~`prod`~~: ~~Most stable branch: used in production [here](https://sso.nextflow.cloud).~~ *dormant, inactive as of 2024
-* `main`: ~~Beta or release preview: mostly stable and likely will be pushed to production with a couple fixes.~~ In current deployment at [sso.nextflow.cloud](https://sso.nextflow.cloud).
-* `dev`: Active development: expect a variety of unstable and/or unfinished features and fixes.
