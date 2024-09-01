@@ -3,6 +3,7 @@ pub mod files;
 pub mod profile;
 pub mod session;
 pub mod user;
+pub mod scheme;
 
 use log::info;
 use mongodb::{Client, Database};
