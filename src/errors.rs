@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use actix_web::ResponseError;
+use log::error;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -35,6 +36,9 @@ pub enum Error {
 
     InvalidCaptcha,
     InternalCaptchaError,
+
+    InternalEmailError,
+    EmailMisconfigured,
 
     RateLimited {
         limit: u64,
@@ -85,6 +89,9 @@ impl ResponseError for Error {
             Error::InternalCaptchaError => actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
 
             Error::RateLimited { .. } => actix_web::http::StatusCode::TOO_MANY_REQUESTS,
+
+            Error::InternalEmailError => actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Error::EmailMisconfigured => actix_web::http::StatusCode::METHOD_NOT_ALLOWED,
         }
     }
 
@@ -100,7 +107,8 @@ impl From<jsonwebtoken::errors::Error> for Error {
 }
 
 impl From<mongodb::error::Error> for Error {
-    fn from(_: mongodb::error::Error) -> Self {
+    fn from(db: mongodb::error::Error) -> Self {
+        error!("Database error: {}", db);
         Error::DatabaseError
     }
 }

@@ -17,4 +17,8 @@ lazy_static! {
         .map(|s| s.to_string())
         .collect();
     pub static ref HOST: String = env::var("HOST").expect("HOST must be set");
+    pub static ref SMTP_USERNAME: Option<String> = env::var("SMTP_USERNAME").ok();
+    pub static ref SMTP_PASSWORD: Option<String> = env::var("SMTP_PASSWORD").ok();
+    pub static ref SMTP_SERVER: Option<String> = env::var("SMTP_SERVER").ok();
+    pub static ref SMTP_FROM: Option<String> = env::var("SMTP_FROM").ok();
 }

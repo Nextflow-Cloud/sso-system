@@ -9,10 +9,11 @@ use actix_extensible_rate_limit::{
 use actix_web::{dev::ServiceRequest, HttpResponse};
 use aes_gcm::{aead::Aead, Aes256Gcm, Nonce};
 use lazy_static::lazy_static;
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use lettre::{message::header::ContentType, transport::smtp::authentication::Credentials, AsyncSmtpTransport, AsyncStd1Executor, AsyncTransport, Message};
+use rand::{distributions::Alphanumeric, rngs::StdRng, thread_rng, Rng, SeedableRng};
 use regex::Regex;
 
-use crate::errors::Error;
+use crate::{environment::{SMTP_FROM, SMTP_PASSWORD, SMTP_SERVER, SMTP_USERNAME}, errors::Error};
 
 lazy_static! {
     pub static ref USERNAME_RE: Regex = Regex::new(r"^[0-9A-Za-z_.-]{3,32}$").expect("Unexpected error: failed to process regex");
@@ -107,4 +108,35 @@ pub fn create_success_rate_limiter(
         })
         .add_headers()
         .build()
+}
+
+pub fn generate_continue_token_long() -> String {
+    thread_rng().sample_iter(&Alphanumeric).take(128).map(char::from).collect()
+}
+
+pub async fn send_reset_email(to: String, token: String) -> crate::errors::Result<()> {
+    let Some(from) = &*SMTP_FROM else {
+        return Err(Error::EmailMisconfigured);
+    };
+    let Some(username) = &*SMTP_USERNAME else {
+        return Err(Error::EmailMisconfigured);
+    };
+    let Some(password) = &*SMTP_PASSWORD else {
+        return Err(Error::EmailMisconfigured);
+    };
+    let Some(server) = &*SMTP_SERVER else {
+        return Err(Error::EmailMisconfigured);
+    };
+    let continue_url = format!("https://sso.nextflow.cloud/forgot?token={}", token);
+    let email = Message::builder()
+        .from(from.parse().map_err(|_| Error::EmailMisconfigured)?)
+        .to(to.parse().map_err(|_| Error::InternalEmailError)?)
+        .subject("Reset password")
+        .header(ContentType::TEXT_PLAIN)
+        .body(format!("Hi there! We received a request to reset your password. If this was you, please click the following link to continue.\n\n{}", continue_url))
+        .map_err(|_| Error::EmailMisconfigured)?;
+    let creds = Credentials::new(username.to_string(), password.to_string());
+    let mailer = AsyncSmtpTransport::<AsyncStd1Executor>::relay(server).expect("failed to set server").credentials(creds).build();
+    mailer.send(email).await.map_err(|_| Error::InternalEmailError)?;
+    Ok(())
 }

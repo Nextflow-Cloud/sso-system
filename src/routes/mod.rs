@@ -13,3 +13,4 @@ pub mod service;
 pub mod session;
 pub mod user;
 pub mod validate;
+pub mod forgot;
