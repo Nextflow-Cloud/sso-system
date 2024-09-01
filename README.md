@@ -37,8 +37,12 @@ Before running, you should populate the environment variables with the following
 * `HCAPTCHA_SECRET`: A secret from hCaptcha to verify hCaptcha tokens.
 * `CORS_ORIGINS`: A list of origins to allow CORS requests from, separated by commas.
 * `HOST`: The host to bind the server to.
+* `SMTP_SERVER`: The SMTP server to send from.
+* `SMTP_USERNAME`: The username to use with the SMTP server.
+* `SMTP_PASSWORD`: The password to use with the SMTP server.
+* `SMTP_FROM`: The email address to send from, such as `System <system@nextflow.cloud>`.
 
-Currently, all variables are required for intended operation of the server.
+With the exception of the mail server, all variables are required. Setting the mail server variables will allow the reset password feature to function.
 
 After doing so, run `cargo run --release` to build and run the server. It may take a while to build, especially on ARM64 systems.
 
