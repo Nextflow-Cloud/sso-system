@@ -27,6 +27,7 @@ pub mod utilities;
 
 #[async_std::main]
 async fn main() {
+    dotenvy::dotenv().ok();
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
 
     info!("Nextflow SSO system version {}", env!("CARGO_PKG_VERSION"));
