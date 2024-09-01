@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::routes::{account_settings, delete, login, mfa};
+use crate::routes::{account_settings, delete, forgot, login, mfa};
 
 pub fn run() {
     let now = SystemTime::now()
@@ -30,6 +30,11 @@ pub fn run() {
     for pending in mfa::PENDING_MFA_DISABLES.iter() {
         if now - pending.value().time > 3600 {
             mfa::PENDING_MFA_DISABLES.remove(pending.key());
+        }
+    }
+    for pending in forgot::PENDING_FORGOTS.iter() {
+        if now - pending.value().time > 3600 {
+            forgot::PENDING_FORGOTS.remove(pending.key());
         }
     }
 }
