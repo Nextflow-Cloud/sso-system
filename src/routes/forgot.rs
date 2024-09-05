@@ -1,4 +1,5 @@
 use actix_web::{web, Responder};
+use async_std::task;
 use bcrypt::{hash, DEFAULT_COST};
 use dashmap::DashMap;
 use lazy_static::lazy_static;
@@ -52,7 +53,7 @@ pub async fn handle(forgot: web::Json<Forgot>) -> Result<impl Responder> {
                     .duration_since(UNIX_EPOCH)
                     .expect("Unexpected error: time went backwards");
                 let token = generate_continue_token_long();
-                send_reset_email(email.clone(), token.clone()).await?;
+                task::spawn(send_reset_email(email.clone(), token.clone()));
                 PENDING_FORGOTS.insert(token, PendingForgot {
                     time: duration.as_secs(),
                     user_id: result.id
@@ -89,6 +90,8 @@ pub async fn handle(forgot: web::Json<Forgot>) -> Result<impl Responder> {
                     "password_hash": new_password_hash
                 }
             }).await?;
+            drop(forgot_session);
+            PENDING_FORGOTS.remove(&continue_token);
             Ok(web::Json(ForgotResponse{ success: true }))
         }
         _ => Err(Error::InvalidStage),
