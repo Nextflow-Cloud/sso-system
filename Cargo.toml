@@ -34,7 +34,9 @@ mongodb = "3.0.0"
 jsonwebtoken = "9.3.0"
 ulid = "1.1.2"
 
-lettre = "0.11"
+lettre = { version = "0.11", features = ["async-std1", "async-std1-rustls-tls", "builder", "smtp-transport"], default-features = false }
 
 totp-rs = { version = "5.5.1", features = ["qr"] }
 passkey = "0.2.0"
+opaque-ke = "3.0.0-pre.4"
+dotenvy = "0.15.7"
